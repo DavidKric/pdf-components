@@ -1,0 +1,8 @@
+.annotationLayer section {
+  border: none!important;
+  z-index: 30;
+}
+.annotationLayer .linkAnnotation > a:hover {
+  background: none;
+  box-shadow: none;
+}

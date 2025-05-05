@@ -2,7 +2,7 @@
  * PDF Component Library exports
  */
 
-import './less/index.less';
+import './css/index.css';
 
 import { BoundingBox, Props as BoundingBoxProps } from './src/components/BoundingBox';
 import { DocumentWrapper, Props as DocumentWrapperProps } from './src/components/DocumentWrapper';
