@@ -13,11 +13,10 @@ module.exports = (env, argv) => {
     module: {
       rules: [
         {
-          test: /\.(less|css)$/,
+          test: /\.css$/,
           use: [
             { loader: isProduction ? MiniCssPlugin.loader : 'style-loader' },
             { loader: 'css-loader' },
-            { loader: 'less-loader', options: { lessOptions: { javascriptEnabled: true } } },
           ],
         },
         {
