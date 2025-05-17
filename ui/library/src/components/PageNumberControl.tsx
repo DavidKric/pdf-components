@@ -9,7 +9,8 @@ export type Props = {
   className?: string;
 };
 
-type TODO__TIMER = any;
+// Timer reference returned by setTimeout
+type TODO__TIMER = ReturnType<typeof setTimeout>;
 
 const DELAY_SCROLL_TIME_OUT_MS = 1000;
 
@@ -42,12 +43,15 @@ export const PageNumberControl: React.FunctionComponent<Props> = ({ className }:
   const onPageNumberChange = React.useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const { value } = event.currentTarget;
-      // Decimal case
-      if (!Number.isInteger(value)) {
-        setUserInput(parseInt(value, 10).toString());
+      const numericValue = Number(value);
+
+      // If user entered a decimal, truncate to an integer
+      if (!Number.isNaN(numericValue) && !Number.isInteger(numericValue)) {
+        setUserInput(Math.floor(numericValue).toString());
+      } else {
+        setUserInput(value);
       }
 
-      setUserInput(value);
       if (delayTimerRef.current) {
         clearTimeout(delayTimerRef.current);
       }
@@ -56,7 +60,7 @@ export const PageNumberControl: React.FunctionComponent<Props> = ({ className }:
       // our ref will start setting a delay around 1s before scroll
       // to the position that user desire
       const newPageNumber = parseInt(value, 10);
-      if (newPageNumber >= minPage && newPageNumber <= numPages) {
+      if (!Number.isNaN(newPageNumber) && newPageNumber >= minPage && newPageNumber <= numPages) {
         delayTimerRef.current = setTimeout(() => {
           scrollToPage({ pageNumber: newPageNumber });
         }, DELAY_SCROLL_TIME_OUT_MS);
