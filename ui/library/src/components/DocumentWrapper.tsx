@@ -102,18 +102,23 @@ export const DocumentWrapper: React.FunctionComponent<Props> = ({
       }
 
       // Scroll to the destination of the item
-      pdfDocProxy.getDestination(param.dest).then(destArray => {
-        if (!destArray) {
-          return;
-        }
+      pdfDocProxy
+        .getDestination(param.dest)
+        .then(destArray => {
+          if (!destArray) {
+            return;
+          }
 
-        // destArray is in the format: [ref, params]
-        const ref = destArray[0] as Ref;
-        pdfDocProxy.getPageIndex(ref).then(pageIndex => {
-          // Call scrollToPosition with the appropriate parameters
-          scrollToPosition(pageIndex, 0, 0, rotation);
+          // destArray is in the format: [ref, params]
+          const ref = destArray[0] as Ref;
+          pdfDocProxy.getPageIndex(ref).then(pageIndex => {
+            // Call scrollToPosition with the appropriate parameters
+            scrollToPosition(pageIndex, 0, 0, rotation);
+          });
+        })
+        .catch(() => {
+          /* ignore invalid destinations */
         });
-      });
     },
     [pdfDocProxy, rotation]
   );
