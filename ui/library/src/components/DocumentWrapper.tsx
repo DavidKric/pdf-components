@@ -1,5 +1,8 @@
 import * as React from 'react';
-import { Document, DocumentProps, pdfjs } from 'react-pdf';
+import { pdfjs } from 'react-pdf';
+// For React-PDF v9 compatibility
+const { Document } = require('react-pdf');
+import type { PDFDocumentProxy } from 'react-pdf';
 
 import { DocumentContext } from '../context/DocumentContext';
 import { ScrollContext } from '../context/ScrollContext';
@@ -7,111 +10,130 @@ import { TransformContext } from '../context/TransformContext';
 import { UiContext } from '../context/UiContext';
 import { getErrorMessage } from '../utils/errorMessage';
 import { initPdfWorker } from '../utils/pdfWorker';
-import { getRenderMode, RenderType } from '../utils/reader-utils';
+import { getRenderMode, RENDER_TYPE } from '../utils/reader-utils';
 import { computePageDimensions, IPDFPageProxy } from '../utils/scale';
 import { scrollToPosition } from '../utils/scroll';
 import { Destination, Ref } from './types/destination';
 
 export type Props = {
   children?: React.ReactNode;
-  renderType: RenderType;
-} & DocumentProps;
+  className?: string;
+  file?: string | Uint8Array | { data: Uint8Array } | null;
+  inputRef?: React.RefObject<HTMLDivElement>;
+  options?: any;
+  renderType?: typeof RENDER_TYPE[keyof typeof RENDER_TYPE];
+  error?: React.ReactNode | ((error: Error) => React.ReactNode);
+  loading?: React.ReactNode | (() => React.ReactNode);
+};
+
+// Initialize the PDF worker once when the module is loaded
+// This prevents multiple initializations when the component is mounted multiple times
+// and ensures it's called before any PDF components are used
+initPdfWorker();
 
 export const DocumentWrapper: React.FunctionComponent<Props> = ({
   children,
-  renderType,
+  className,
+  file,
+  inputRef,
+  options,
+  renderType = RENDER_TYPE.MULTI_CANVAS,
+  error,
+  loading,
   ...extraProps
 }: Props) => {
-  initPdfWorker();
-
-  const { pdfDocProxy, setNumPages, setNumPagesLoaded, setPageDimensions, setPdfDocProxy } =
+  const { pdfDocProxy, setNumPages, setPageDimensions, setPdfDocProxy, setNumPagesLoaded } =
     React.useContext(DocumentContext);
-  const { resetScrollObservers, updateScrollPosition } = React.useContext(ScrollContext);
-  const { rotation, scale } = React.useContext(TransformContext);
+  const { resetScrollObservers } = React.useContext(ScrollContext);
+  const { rotation } = React.useContext(TransformContext);
   const { setErrorMessage, setIsLoading } = React.useContext(UiContext);
-  const [lastScale, setLastScale] = React.useState(1); // assuming the scale defaults to 100%
 
-  function getFirstPage(pdfDoc: pdfjs.PDFDocumentProxy): Promise<IPDFPageProxy> {
+  // Track whether the component has been mounted to prevent useEffect from running multiple times
+  const hasMountedRef = React.useRef(false);
+
+  function getFirstPage(pdfDoc: PDFDocumentProxy): Promise<IPDFPageProxy> {
     // getPage uses 1-indexed pageNumber, not 0-indexed pageIndex
     return pdfDoc.getPage(1);
   }
 
+  // Only reset scroll observers once on mount to prevent infinite renders
   React.useEffect(() => {
-    resetScrollObservers();
-  }, []);
-
-  // after scale changes, update scroll position so the user stays looking at the same position of the paper
-  React.useEffect(() => {
-    if (scale === lastScale) {
-      return;
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      resetScrollObservers();
     }
-    const zoomMultiplier = scale / lastScale;
-    updateScrollPosition(zoomMultiplier);
-    setLastScale(scale);
-  }, [scale, updateScrollPosition]);
+  }, [resetScrollObservers]);
 
-  const onPdfLoadSuccess = React.useCallback((pdfDoc: pdfjs.PDFDocumentProxy): void => {
-    setNumPagesLoaded(0);
-    setNumPages(pdfDoc.numPages);
-    getFirstPage(pdfDoc)
-      .then(page => {
-        setPageDimensions(computePageDimensions(page));
-        setErrorMessage(null);
-      })
-      .catch(error => {
-        setErrorMessage(getErrorMessage(error));
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+  const onPdfLoadSuccess = React.useCallback(
+    (pdfDoc: PDFDocumentProxy): void => {
+      setNumPages(pdfDoc.numPages);
+      setNumPagesLoaded(0);
+      getFirstPage(pdfDoc)
+        .then(page => {
+          setPageDimensions(computePageDimensions(page));
+          setErrorMessage(null);
+        })
+        .catch(error => {
+          setErrorMessage(getErrorMessage(error));
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
 
-    if (!pdfDocProxy) {
-      setPdfDocProxy(pdfDoc);
-    }
-  }, []);
+      if (!pdfDocProxy) {
+        setPdfDocProxy(pdfDoc);
+      }
+    },
+    [pdfDocProxy, setErrorMessage, setIsLoading, setNumPages, setNumPagesLoaded, setPageDimensions, setPdfDocProxy]
+  );
 
-  const onSourceError = React.useCallback((error: unknown): void => {
-    setErrorMessage(getErrorMessage(error));
-    setIsLoading(false);
-  }, []);
+  const onPdfLoadError = React.useCallback(
+    (error: unknown): void => {
+      setErrorMessage(getErrorMessage(error));
+      setIsLoading(false);
+    },
+    [setErrorMessage, setIsLoading]
+  );
 
-  const onPdfLoadError = React.useCallback((error: unknown): void => {
-    setErrorMessage(getErrorMessage(error));
-    setIsLoading(false);
-  }, []);
-
-  const onItemClicked = (param: Destination): void => {
-    if (!pdfDocProxy) {
-      return;
-    }
-
-    // Scroll to the destination of the item
-    pdfDocProxy.getDestination(param.dest).then(destArray => {
-      if (!destArray) {
+  const onItemClicked = React.useCallback(
+    (param: Destination): void => {
+      if (!pdfDocProxy) {
         return;
       }
 
-      const [ref, , , bottomPoints] = destArray;
-      pdfDocProxy.getPageIndex(new Ref(ref)).then(refInfo => {
-        scrollToPosition(parseInt(refInfo.toString()), 0, bottomPoints, rotation);
+      // Scroll to the destination of the item
+      pdfDocProxy.getDestination(param.dest).then(destArray => {
+        if (!destArray) {
+          return;
+        }
+
+        // destArray is in the format: [ref, params]
+        const ref = destArray[0] as Ref;
+        pdfDocProxy.getPageIndex(ref).then(pageIndex => {
+          // Call scrollToPosition with the appropriate parameters
+          scrollToPosition(pageIndex, 0, 0, rotation);
+        });
       });
-    });
-  };
+    },
+    [pdfDocProxy, rotation]
+  );
+
+  const renderMode = getRenderMode(renderType);
 
   return (
-    <Document
-      options={{ cMapUrl: 'cmaps/', cMapPacked: true }}
-      onSourceError={onSourceError}
-      onLoadError={onPdfLoadError}
-      onLoadSuccess={onPdfLoadSuccess}
-      externalLinkTarget="_blank"
-      renderMode={getRenderMode(renderType)}
-      // @ts-ignore: the arguments should be { dest, pageIndex, pageNumber }
-      // @types/react-pdf hasn't updated the function signature
-      // https://github.com/DefinitelyTyped/DefinitelyTyped/blob/d73eb652e0ba8f89395a0ef2ba69cf1e640ce5be/types/react-pdf/dist/Document.d.ts#L72
-      onItemClick={onItemClicked}
-      {...extraProps}>
-      {children}
-    </Document>
+    <div className={className} ref={inputRef}>
+      <Document
+        file={file}
+        options={options}
+        onLoadSuccess={onPdfLoadSuccess}
+        onLoadError={onPdfLoadError}
+        onItemClick={onItemClicked}
+        renderMode={renderMode}
+        error={error}
+        loading={loading}
+        {...extraProps}>
+        {children}
+      </Document>
+    </div>
   );
 };

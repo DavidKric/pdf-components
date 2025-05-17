@@ -1,7 +1,7 @@
 import classnames from 'classnames';
 import * as React from 'react';
-import { Page } from 'react-pdf';
-import { RenderFunction } from 'react-pdf/dist/Page';
+// For React-PDF v9 compatibility
+const { Page } = require('react-pdf');
 
 import { DocumentContext } from '../context/DocumentContext';
 import { PageRenderContext } from '../context/PageRenderContext';
@@ -17,9 +17,9 @@ import { Overlay } from './Overlay';
  * A subset of react-pdf's Page component props exposed by this wrapper
  */
 export type PageProps = {
-  error?: string | React.ReactElement | RenderFunction;
-  loading?: string | React.ReactElement | RenderFunction;
-  noData?: string | React.ReactElement | RenderFunction;
+  error?: React.ReactNode | ((props: { error: Error }) => React.ReactNode);
+  loading?: React.ReactNode | (() => React.ReactNode);
+  noData?: React.ReactNode | (() => React.ReactNode);
   pageIndex: number;
 };
 
@@ -74,7 +74,7 @@ export const PageWrapper: React.FunctionComponent<Props> = ({
     pageDimensions,
   });
 
-  const markPageAsLoaded = React.useCallback(() => {
+  const markPageAsLoaded = React.useCallback(({ items, styles }: { items: any; styles: any }) => {
     setNumPagesLoaded(prevNumPagesLoaded => prevNumPagesLoaded + 1);
   }, []);
 

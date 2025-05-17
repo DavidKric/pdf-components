@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { pdfjs } from 'react-pdf';
+import type { PDFDocumentProxy } from 'react-pdf';
 
 import { Dimensions } from '../components/types/boundingBox';
 import {
@@ -19,14 +20,14 @@ export interface IDocumentContext {
   outline: Nullable<Array<OutlineNode>>;
   outlinePositions: Nullable<OutlinePositionsByPageNumberMap>;
   pageDimensions: Dimensions; // Scaled at 100%
-  pdfDocProxy?: pdfjs.PDFDocumentProxy;
+  pdfDocProxy?: PDFDocumentProxy;
   getOutlineTargets: (opts: OutlineTargetArgs) => OutlineTarget[];
   setNumPages: (numPages: number) => void;
   setNumPagesLoaded: (numPagesLoaded: number | ((prevNumPagesLoaded: number) => number)) => void;
   setOutline: (outline: Nullable<Array<OutlineNode>>) => void;
   setOutlinePositions: (outlinePositions: Nullable<OutlinePositionsByPageNumberMap>) => void;
   setPageDimensions: (pageDimensions: Dimensions) => void;
-  setPdfDocProxy: (pdfDocProxy: pdfjs.PDFDocumentProxy) => void;
+  setPdfDocProxy: (pdfDocProxy: PDFDocumentProxy) => void;
 }
 
 export const DocumentContext = React.createContext<IDocumentContext>({
@@ -70,7 +71,7 @@ export function useDocumentContextProps(): IDocumentContext {
     height: 0,
     width: 0,
   });
-  const [pdfDocProxy, setPdfDocProxy] = React.useState<pdfjs.PDFDocumentProxy>();
+  const [pdfDocProxy, setPdfDocProxy] = React.useState<PDFDocumentProxy>();
 
   // Draw outline target into the pdf based on the args
   const getOutlineTargets = React.useCallback(
@@ -124,7 +125,7 @@ export function useDocumentContextProps(): IDocumentContext {
 }
 
 export async function buildOutlinePositions(
-  pdfDocProxy: pdfjs.PDFDocumentProxy,
+  pdfDocProxy: PDFDocumentProxy,
   outline?: OutlineNode[]
 ): Promise<OutlinePositionsByPageNumberMap> {
   if (!outline) {
@@ -132,7 +133,7 @@ export async function buildOutlinePositions(
   }
 
   // Depth first search through outline items
-  const itemQueue = outline.slice();
+  const itemQueue = (outline as any).slice();
   const proms: Promise<Nullable<OutlinePosition>>[] = [];
   while (itemQueue.length > 0) {
     const item = itemQueue.pop();
@@ -184,7 +185,7 @@ export async function buildOutlinePositions(
 }
 
 async function getDestination(
-  pdfDocProxy: pdfjs.PDFDocumentProxy,
+  pdfDocProxy: PDFDocumentProxy,
   dest: string
 ): Promise<Nullable<OutlinePosition>> {
   const result = await pdfDocProxy.getDestination(dest);

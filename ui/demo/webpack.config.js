@@ -3,10 +3,31 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 
-module.exports = {
+const baseConfig = {
   entry: ['./index.tsx', './less/main.less'],
+  devtool: 'source-map',
   module: {
     rules: [
+      {
+        test: /\.(ts|tsx)$/,
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: 'ts-loader',
+            options: {
+              transpileOnly: process.env.NODE_ENV === 'fast',
+            },
+          },
+        ],
+      },
+      {
+        test: /\.js$/,
+        include: /node_modules\/react-pdf/,
+        type: 'javascript/auto',
+        resolve: {
+          fullySpecified: false
+        }
+      },
       {
         test: /\.(less|css)$/,
         use: [
@@ -16,29 +37,34 @@ module.exports = {
         ],
       },
       {
-        test: /\.tsx?$/,
-        loader: 'ts-loader',
-        exclude: /node_modules/,
+        test: /\.(jpg|png)$/,
+        type: 'asset/resource',
+      },
+      {
+        test: /\.pdf$/,
+        type: 'asset/resource',
       },
     ],
   },
-  devtool: 'eval-source-map',
   resolve: {
-    extensions: ['.tsx', '.ts', '.js', '.jsx'],
+    extensions: ['.tsx', '.ts', '.js', '.jsx', '.mjs'],
+    alias: {
+      // For development, we want to alias the library to the source
+      '@allenai/pdf-components': path.resolve(__dirname, '../library/dist'),
+      // Ensure only one copy of React is used
+      'react': path.resolve(__dirname, './node_modules/react'),
+      'react-dom': path.resolve(__dirname, './node_modules/react-dom')
+    },
+    fallback: {
+      'react/jsx-runtime': require.resolve('react/jsx-runtime')
+    }
   },
   plugins: [
     new CleanWebpackPlugin(),
-    // This copies `public/index.html` into the build output directory.
     new HtmlWebpackPlugin({
       template: 'public/index.html',
-      /* This ensures that links to injected scripts, styles and images start at the
-       * root instead of being relative to the current URL. Without this deep
-       * URLs that target the URI don't work.
-       */
       publicPath: '/',
     }),
-    // This copies everything that isn't `index.html` from `public/` into the build output
-    // directory.
     new CopyPlugin({
       patterns: [
         {
@@ -52,25 +78,47 @@ module.exports = {
           from: 'node_modules/pdfjs-dist/cmaps/',
           to: 'cmaps/',
         },
+        {
+          from: 'node_modules/pdfjs-dist/standard_fonts/',
+          to: 'standard_fonts/',
+        },
+        {
+          from: 'node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
+          to: 'pdf.worker.min.mjs',
+        },
+        {
+          from: 'node_modules/pdfjs-dist/build/pdf.worker.mjs',
+          to: 'pdf.worker.mjs',
+        },
       ],
     }),
   ],
   output: {
-    filename: 'main.[fullhash:6].js',
+    filename: '[name].[fullhash:6].js',
     path: path.resolve(__dirname, 'build'),
+    publicPath: '/',
+  },
+  optimization: {
+    moduleIds: 'deterministic',
+    splitChunks: {
+      chunks: 'all',
+      name: (module, chunks, cacheGroupKey) => {
+        return `${cacheGroupKey}-${chunks.map(c => c.name).join('-')}`;
+      },
+    },
+  },
+  experiments: {
+    outputModule: false,
   },
   devServer: {
+    static: { directory: path.join(__dirname, 'public') },
     hot: true,
     host: '0.0.0.0',
-    // The `ui` host is used by the reverse proxy when requesting the UI while working locally.
-    allowedHosts: ['ui'],
+    allowedHosts: ['all'],
     historyApiFallback: true,
-    port: 3000,
-    // Apparently webpack's dev server doesn't write files to disk. This makes it hard to
-    // debug the build process, as there's no way to examine the output. We change this
-    // setting so that it's easier to inspect what's built. This in theory might make things
-    // slower, but it's probably worth the extra nanosecond.
-    writeToDisk: true,
-    lazy: false,
+    port: 3001,
+    watchFiles: ['src/**/*', 'public/**/*'],
   },
 };
+
+module.exports = baseConfig;

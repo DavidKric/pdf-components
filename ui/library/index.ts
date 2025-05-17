@@ -4,6 +4,10 @@
 
 import './css/index.css';
 
+// Import required CSS files for react-pdf v9
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+
 import { BoundingBox, Props as BoundingBoxProps } from './src/components/BoundingBox';
 import { DocumentWrapper, Props as DocumentWrapperProps } from './src/components/DocumentWrapper';
 import { DownloadButton, Props as DownloadButtonProps } from './src/components/DownloadButton';
@@ -47,6 +51,7 @@ import {
 } from './src/context/TransformContext';
 import { IUiContext, UiContext } from './src/context/UiContext';
 import { PercentFormatter } from './src/utils/format';
+import { initPdfWorker } from './src/utils/pdfWorker';
 import { RENDER_TYPE } from './src/utils/reader-utils';
 import {
   isSideways,
@@ -108,6 +113,7 @@ export {
   getPageWidth,
   HighlightOverlay,
   IconFlag,
+  initPdfWorker,
   isSideways,
   Outline,
   OutlineItem,
@@ -135,6 +141,8 @@ export {
 };
 
 export default {
+  ArrowFlag,
+  ArrowFlagBase,
   BoundingBox,
   computeBoundingBoxStyle,
   computePageStyle,
@@ -143,14 +151,12 @@ export default {
   DocumentContext,
   DocumentWrapper,
   DownloadButton,
-  ArrowFlag,
-  ArrowFlagBase,
-  PrintButton,
   generatePageIdFromIndex,
   getPageHeight,
   getPageWidth,
   HighlightOverlay,
   IconFlag,
+  initPdfWorker,
   isSideways,
   Outline,
   OutlineItem,
@@ -159,18 +165,19 @@ export default {
   PageRenderContext,
   PageRotation,
   PageWrapper,
-  POSITION,
-  SidePanel,
   PercentFormatter,
+  POSITION,
+  PrintButton,
   RENDER_TYPE,
   rotateClockwise,
   rotateCounterClockwise,
   scaleRawBoundingBox,
+  ScrollContext,
   scrollToId,
   scrollToPdfPageIndex,
+  SidePanel,
   Thumbnail,
   ThumbnailList,
-  ScrollContext,
   TransformContext,
   UiContext,
   ZoomInButton,

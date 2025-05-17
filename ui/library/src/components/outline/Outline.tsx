@@ -4,6 +4,7 @@ import { buildOutlinePositions, DocumentContext } from '../../context/DocumentCo
 import { ScrollContext } from '../../context/ScrollContext';
 import { NodeDestination, OutlineNode } from '../types/outline';
 import { OutlineItem } from './OutlineItem';
+import type { PDFDocumentProxy } from 'react-pdf';
 
 export const Outline: React.FunctionComponent = ({ ...extraProps }) => {
   const { outline, pdfDocProxy, setOutline, setOutlinePositions } =
@@ -23,9 +24,9 @@ export const Outline: React.FunctionComponent = ({ ...extraProps }) => {
       .getOutline()
       .then((outlineArray: Array<OutlineNode>) => {
         setOutline(outlineArray);
-        return buildOutlinePositions(pdfDocProxy, outlineArray);
+        return buildOutlinePositions(pdfDocProxy as PDFDocumentProxy, outlineArray);
       })
-      .then(outlinePositions => {
+      .then((outlinePositions: any) => {
         setOutlinePositions(outlinePositions);
       })
       .then(() => {

@@ -22,6 +22,12 @@ import { ScrollToDemo } from './ScrollToDemo';
 import { TextHighlightDemo } from './TextHighlightDemo';
 import { Thumbnail } from './Thumbnail';
 
+// Define PDF.js options outside of React component
+const pdfOptions = {
+  cMapUrl: '/cmaps/',
+  standardFontDataUrl: '/standard_fonts/',
+};
+
 export const Reader: React.FunctionComponent<RouteComponentProps> = () => {
   const { pageDimensions, numPages } = React.useContext(DocumentContext);
   const { setScrollRoot } = React.useContext(ScrollContext);
@@ -36,7 +42,9 @@ export const Reader: React.FunctionComponent<RouteComponentProps> = () => {
   // ref for the scrollable region where the pages are rendered
   const pdfScrollableRef = React.createRef<HTMLDivElement>();
 
-  const samplePdfUrl = 'https://arxiv.org/pdf/2112.07873.pdf';
+  // PDF sample URL
+  // For react-pdf v9, using a local PDF file is more reliable than remote URLs (which can have CORS issues)
+  const samplePdfUrl = '/sample.pdf';
   const sampleS2airsUrl =
     'http://s2airs.prod.s2.allenai.org/v1/pdf_data?pdf_sha=9b79eb8d21c8a832daedbfc6d8c31bebe0da3ed5';
 
@@ -77,7 +85,20 @@ export const Reader: React.FunctionComponent<RouteComponentProps> = () => {
               className="reader__main"
               file={samplePdfUrl}
               inputRef={pdfContentRef}
-              renderType={RENDER_TYPE.SINGLE_CANVAS}>
+              options={pdfOptions}
+              renderType={RENDER_TYPE.SINGLE_CANVAS}
+              error={(error) => (
+                <div style={{ padding: 20, color: 'red' }}>
+                  <h2>Failed to load PDF</h2>
+                  <p>{error ? error.message : 'Unknown error occurred'}</p>
+                  <p>Check browser console for more details.</p>
+                </div>
+              )}
+              loading={() => (
+                <div style={{ padding: 20 }}>
+                  <h2>Loading PDF...</h2>
+                </div>
+              )}>
               <Outline parentRef={pdfContentRef} />
               <Thumbnail parentRef={pdfContentRef} />
               <div className="reader__page-list" ref={pdfScrollableRef}>

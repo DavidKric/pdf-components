@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { pdfjs } from 'react-pdf';
+import { pdfjs as anyPdfjs } from 'react-pdf';
+import type { PDFDocumentProxy } from 'react-pdf';
 
 import { PageNumber } from '../components/types/page';
 import { Nullable } from '../components/types/utils';
@@ -47,7 +48,7 @@ export function usePageRenderContextProps({
   scale,
   visiblePageRatios,
 }: {
-  pdfDocProxy?: pdfjs.PDFDocumentProxy;
+  pdfDocProxy?: PDFDocumentProxy;
   pixelRatio: number;
   scale: number;
   visiblePageRatios: Map<number, VisibleEntryDetailType>;
@@ -222,7 +223,7 @@ async function buildPageObjectURL({
   promiseTimestamp,
 }: {
   pageNumber: number;
-  pdfDocProxy: pdfjs.PDFDocumentProxy;
+  pdfDocProxy: PDFDocumentProxy;
   pixelRatio?: number;
   scale?: number;
   imageType?: string;

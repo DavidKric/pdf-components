@@ -1,12 +1,25 @@
 {
   "compilerOptions": {
-    "target": "es6",
-    "lib": ["dom", "dom.iterable", "es2019"],
+    "target": "es2021",
+    "lib": ["dom", "dom.iterable", "es2021"],
     "moduleResolution": "node",
-    "allowSyntheticDefaultImports": false,
+    "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
-    "sourceMap": true
-  }
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "@allenai/pdf-components": ["../library/dist"],
+      "@allenai/pdf-components/*": ["../library/dist/*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

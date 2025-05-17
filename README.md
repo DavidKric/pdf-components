@@ -1,7 +1,7 @@
 # Pdf-component-library
 
 ## Overview
-The Pdf-Component-Library provides the means of displaying PDF’s in your React application with several built in reading features. It is built on top of the [React-PDF library](https://github.com/wojtekmaj/react-pdf/blob/main/packages/react-pdf/README.md), with some added components to help with creating an interactive reading experience. This library is built with research papers in mind, and aims at providing researchers with helpful tools to help their reading experience. It allowed us to create the [Semantic Reader](https://www.semanticscholar.org/product/semantic-reader) which you can demo [here](https://www.semanticscholar.org/reader/13497bd108d4412d02050e646235f456568cf822)
+The Pdf-Component-Library provides the means of displaying PDF's in your React application with several built in reading features. It is built on top of the [React-PDF library](https://github.com/wojtekmaj/react-pdf/blob/main/packages/react-pdf/README.md), with some added components to help with creating an interactive reading experience. This library is built with research papers in mind, and aims at providing researchers with helpful tools to help their reading experience. It allowed us to create the [Semantic Reader](https://www.semanticscholar.org/product/semantic-reader) which you can demo [here](https://www.semanticscholar.org/reader/13497bd108d4412d02050e646235f456568cf822)
 
 ## Features
 - Citation Popovers
@@ -15,7 +15,7 @@ The Pdf-Component-Library provides the means of displaying PDF’s in your React
 - Browser performance optimization
 
 ## How does it work?
-We render each pdf page with several layers in order to display and render interactable components. First an image is generated of each PDF page, which is used for a background image on the bottom most layer. Then we place a transparent “text layer” in front of the background image. The text layer allows for text selection, copy/pasting, and highlighting. Above the text layer is the overlay layer. The overlay is where most of the interactive features are located, such as page highlights and citation popovers. 
+We render each pdf page with several layers in order to display and render interactable components. First an image is generated of each PDF page, which is used for a background image on the bottom most layer. Then we place a transparent "text layer" in front of the background image. The text layer allows for text selection, copy/pasting, and highlighting. Above the text layer is the overlay layer. The overlay is where most of the interactive features are located, such as page highlights and citation popovers. 
 
 ## When to use PDF-Component-Library
 You should use this library if you want a React based application with an emphasis on PDF reading. I recommend first glossing over the [React-PDF library](https://github.com/wojtekmaj/react-pdf/blob/main/packages/react-pdf/README.md), then if you decide you like that library and want several added features to help with creating an interactive PDF experience, then try our library. 
@@ -59,8 +59,8 @@ If this is the first time building the library, you might have to follow the ste
 | DocumentContext | Has helpful info about the pdf including the number of pages, the pdf outline (table of contents), and the page dimensions.  |
 | TransformContext | Allows setting the scale of pages (zoom), and the rotation |
 | UIContext | Helpful ui info such as if the pdf is currently loading and if thumbnails/outlines/highlights are currently showing.  |
-| ScrollContext | By far our most complex and worked on context. It provides scroll logic and scroll data, including if at the top of the pdf, how many pages are currently visible, and functionality to scroll to certain parts of the pdf. This is all possible via Intersection Observers, which tell us if a certain spot is currently visible in the user’s viewport. We place several of these on every page so we know exactly how visible reader pages are. |
-| PageRenderContext | Contains logic for rendering the images on every page. Once the page images are done rendering, you can grab the image’s blobURL via getObjectURLForPage and render anywhere like this `<img src={getObjectURLForPage()} />`. This is how we made thumbnails. |
+| ScrollContext | By far our most complex and worked on context. It provides scroll logic and scroll data, including if at the top of the pdf, how many pages are currently visible, and functionality to scroll to certain parts of the pdf. This is all possible via Intersection Observers, which tell us if a certain spot is currently visible in the user's viewport. We place several of these on every page so we know exactly how visible reader pages are. |
+| PageRenderContext | Contains logic for rendering the images on every page. Once the page images are done rendering, you can grab the image's blobURL via getObjectURLForPage and render anywhere like this `<img src={getObjectURLForPage()} />`. This is how we made thumbnails. |
 
 ### More info on the DocumentWrapper
 This component is a wrapper of React-PDF's `Document` component. This loads a document passed using the `file` prop.<br>
@@ -76,3 +76,70 @@ The `isLoading` state in the `UiContext` is also set to `false` in case of an er
 
 ## License
 This project is licensed under the Apache License 2.0.
+
+# PDF Components Development
+
+This repository contains:
+- `ui/library`: The PDF components library based on @allenai/pdf-components with updated React versions
+- `ui/demo`: A demo application that showcases the library's functionality
+
+## Development Setup
+
+The repository is configured to allow direct development of the library with live updates in the demo application without needing to rebuild or package the library.
+
+### Running the Development Environment
+
+1. Install dependencies in both projects:
+
+```bash
+# Install library dependencies
+cd ui/library
+yarn install
+
+# Install demo dependencies
+cd ../demo
+yarn install
+```
+
+2. Start the demo application:
+
+```bash
+cd ui/demo
+yarn dev
+```
+
+This will start the webpack development server with hot reloading. Any changes you make to the library code in `ui/library` will automatically be reflected in the demo application.
+
+### How it Works
+
+The development setup uses webpack aliasing to directly reference the library source code instead of using a compiled package. The demo's webpack configuration includes:
+
+```javascript
+resolve: {
+  alias: {
+    '@allenai/pdf-components': path.resolve(__dirname, '../library'),
+  }
+}
+```
+
+This tells webpack to use the local library source code whenever `@allenai/pdf-components` is imported in the demo.
+
+## Building for Production
+
+When you're ready to build a production version:
+
+```bash
+# Build the library
+cd ui/library
+yarn build
+
+# Build the demo
+cd ../demo
+yarn build
+```
+
+## Notes
+
+- You don't need to run `npm link` or rebuild the library during development
+- Any changes to the library source code will be hot-reloaded in the demo
+- Make sure to follow the same version/dependency requirements in both projects
