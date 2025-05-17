@@ -188,14 +188,18 @@ async function getDestination(
   pdfDocProxy: PDFDocumentProxy,
   dest: string
 ): Promise<Nullable<OutlinePosition>> {
-  const result = await pdfDocProxy.getDestination(dest);
-  if (!result) {
+  try {
+    const result = await pdfDocProxy.getDestination(dest);
+    if (!result) {
+      return null;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [ref, _format, leftPoint, bottomPoint] = result;
+    const pageIndex = await pdfDocProxy.getPageIndex(ref);
+    const pageNumber = pageIndex + 1;
+    return { pageNumber, dest, leftPoint, bottomPoint };
+  } catch {
     return null;
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [ref, _format, leftPoint, bottomPoint] = result;
-  const pageIndex = await pdfDocProxy.getPageIndex(ref);
-  const pageNumber = pageIndex + 1;
-  return { pageNumber, dest, leftPoint, bottomPoint };
 }
