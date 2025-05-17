@@ -7,6 +7,9 @@ node_modules
 
 # UI build output
 ui/demo/build/
+# UI library build output
+ui/library/dist/
+dist/
 
 # UI package manager debug output
 ui/*.log
