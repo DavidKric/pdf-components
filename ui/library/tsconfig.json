@@ -1,16 +1,18 @@
 {
   "compilerOptions": {
+    "rootDir": ".",
     "target": "es2021",
     "lib": [
       "dom",
       "dom.iterable",
       "es2021"
     ],
+    "module": "ESNext",
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "jsx": "react",
+    "jsx": "react-jsx",
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,

@@ -2,6 +2,20 @@
  * PDF Component Library exports
  */
 
+/**
+ * Main entry point for the PDF Component Library.
+ * Exports all core components, contexts, utilities, and types.
+ * @packageVersion 0.0.1
+ */
+
+export const VERSION = '0.0.1';
+
+export const CONSTANTS = {
+  DEFAULT_ZOOM_SCALE,
+  RENDER_TYPE,
+  POSITION,
+} as const;
+
 import './css/index.css';
 
 // Import required CSS files for react-pdf v9

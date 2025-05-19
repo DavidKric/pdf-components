@@ -1,12 +1,18 @@
 {
-  "name": "@allenai/pdf-components",
+  "name": "davidkrichley/pdf-components",
   "version": "0.0.1",
   "license": "Apache-2.0",
-  "author": "s2@allenai.org",
-  "main": "dist/index.js",
+  "author": "david krichley",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
+  "style": "dist/style.css",   
+  "files": ["dist"],
+
   "scripts": {
-    "build": "tsc && webpack --mode production && cp package.publish.json dist/package.json && cd dist && npm pack",
+    "clean": "rimraf dist",
+    "build": "npm run clean && tsup ./index.ts --dts --format esm,cjs --out-dir dist && cp src/style.css dist/style.css",
+    "old_build": "tsc && webpack --mode production && cp package.publish.json dist/package.json && cd dist && npm pack",
     "lint": "eslint '**/*.{js,ts,tsx,json}' && echo '💫  Lint complete.'",
     "lint:fix": "eslint '**/*.{js,ts,tsx,json}' --fix && npx sort-package-json  && echo '🛠  Lint --fix complete'",
     "test": "ts-mocha --require jsdom.setup.js --require test.setup.ts -p tsconfig.json 'test/**/*.test.ts{,?}' --exit"
@@ -20,6 +26,8 @@
     "classnames": "2.3.1"
   },
   "devDependencies": {
+    "rimraf": "^5.0.0",
+    "tsup": "^8.0.0",
     "@types/chai": "4.2.21",
     "@types/mocha": "8.2.3",
     "@types/node": "11.9.5",
