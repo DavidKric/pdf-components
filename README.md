@@ -23,6 +23,7 @@ You should use this library if you want a React based application with an emphas
 ## Getting Started
 Install by executing `npm install @allenai/pdf-components`.
 Refer to directory `ui/demo` for examples of how to import the components.
+If you're using Next.js, see [NEXTJS.md](NEXTJS.md) for a setup guide.
 
 ### Running the Demo Locally via Docker
 
