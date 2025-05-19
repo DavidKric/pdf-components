@@ -9,13 +9,11 @@ export type Props = {
   className?: string;
 };
 
-// Timer reference returned by setTimeout
-type TODO__TIMER = ReturnType<typeof setTimeout>;
 
 const DELAY_SCROLL_TIME_OUT_MS = 1000;
 
 export const PageNumberControl: React.FunctionComponent<Props> = ({ className }: Props) => {
-  const delayTimerRef = React.useRef<TODO__TIMER>();
+  const delayTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
   const { numPages } = React.useContext(DocumentContext);
   const { scrollToPage, visiblePageRatios } = React.useContext(ScrollContext);
   const [minPage, setMinPage] = React.useState<number>(0);

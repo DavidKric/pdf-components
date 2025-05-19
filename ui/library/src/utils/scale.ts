@@ -6,9 +6,15 @@ export interface IPDFPageProxy {
   view: Array<number>; // format: [ top left x coordinate, top left y coordinate, bottom right x, bottom right y]
 }
 
-// We assume 96 DPI for display
-// TODO: There are more accurate ways to do this, but this is what ScholarPhi does now
-const DPI = 96;
+// We assume 96 DPI for display, but adjust for the current device's pixel ratio
+const DEFAULT_DPI = 96;
+
+export function getDisplayDPI(): number {
+  if (typeof window !== 'undefined' && typeof window.devicePixelRatio === 'number') {
+    return DEFAULT_DPI * window.devicePixelRatio;
+  }
+  return DEFAULT_DPI;
+}
 
 // PDF units are in 1/72nds of an inch
 const USER_UNIT_DENOMINATOR = 72;
@@ -20,7 +26,8 @@ const USER_UNIT_DENOMINATOR = 72;
  */
 export function computePageDimensions(page: IPDFPageProxy): Dimensions {
   const [leftPx, topPx, rightPx, bottomPx] = page.view;
-  const PPI = (page.userUnit / USER_UNIT_DENOMINATOR) * DPI;
+  const dpi = getDisplayDPI();
+  const PPI = (page.userUnit / USER_UNIT_DENOMINATOR) * dpi;
 
   return {
     height: (bottomPx - topPx) * PPI,

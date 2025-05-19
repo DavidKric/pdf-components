@@ -44,14 +44,23 @@ export const PageWrapper: React.FunctionComponent<Props> = ({
   const { pageDimensions, getOutlineTargets, setNumPagesLoaded } =
     React.useContext(DocumentContext);
   const { getObjectURLForPage, isBuildingObjectURLForPage } = React.useContext(PageRenderContext);
-  const { isLoading } = React.useContext(UiContext);
+  const { isLoading, errorMessage } = React.useContext(UiContext);
 
   const objectURLForPage = getObjectURLForPage({ pageIndex });
   const isBuildingPageImage = isBuildingObjectURLForPage({ pageIndex });
 
-  // Don't display until we have page size data
-  // TODO: Handle this nicer so we display either the loading or error treatment
-  if (!pageDimensions) {
+  // If we don't have valid page size data, show the loading or error states
+  if (!pageDimensions?.height || !pageDimensions?.width) {
+    if (isLoading && loading) {
+      return <>{typeof loading === 'function' ? loading() : loading}</>;
+    }
+    if (!isLoading && errorMessage && error) {
+      const err = new Error(errorMessage);
+      return <>{typeof error === 'function' ? error({ error: err }) : error}</>;
+    }
+    if (!isLoading && !errorMessage && noData) {
+      return <>{typeof noData === 'function' ? noData() : noData}</>;
+    }
     return null;
   }
 
@@ -80,7 +89,6 @@ export const PageWrapper: React.FunctionComponent<Props> = ({
 
   // Width needs to be set to prevent the outermost Page div from extending to fit the parent,
   // and mis-aligning the text layer.
-  // TODO: Can we CSS this to auto-shrink?
   return (
     <div
       id={generatePageIdFromIndex(pageIndex)}
