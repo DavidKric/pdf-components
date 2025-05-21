@@ -18,10 +18,6 @@ export const CONSTANTS = {
 
 import './css/index.css';
 
-// Import required CSS files for react-pdf v9
-import 'react-pdf/dist/esm/Page/TextLayer.css';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-
 import { BoundingBox, Props as BoundingBoxProps } from './src/components/BoundingBox';
 import { DocumentWrapper, Props as DocumentWrapperProps } from './src/components/DocumentWrapper';
 import { DownloadButton, Props as DownloadButtonProps } from './src/components/DownloadButton';

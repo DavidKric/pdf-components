@@ -1,8 +1,10 @@
+'use client';
 import * as React from 'react';
 import { pdfjs } from 'react-pdf';
 // For React-PDF v9 compatibility
 const { Document } = require('react-pdf');
-import type { PDFDocumentProxy } from 'react-pdf';
+// import type { PDFDocumentProxy } from 'react-pdf';
+type PDFDocumentProxy = any;
 
 import { DocumentContext } from '../context/DocumentContext';
 import { ScrollContext } from '../context/ScrollContext';
@@ -104,14 +106,14 @@ export const DocumentWrapper: React.FunctionComponent<Props> = ({
       // Scroll to the destination of the item
       pdfDocProxy
         .getDestination(param.dest)
-        .then(destArray => {
+        .then((destArray: any) => {
           if (!destArray) {
             return;
           }
 
           // destArray is in the format: [ref, params]
           const ref = destArray[0] as Ref;
-          pdfDocProxy.getPageIndex(ref).then(pageIndex => {
+          pdfDocProxy.getPageIndex(ref).then((pageIndex: number) => {
             // Call scrollToPosition with the appropriate parameters
             scrollToPosition(pageIndex, 0, 0, rotation);
           });

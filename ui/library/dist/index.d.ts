@@ -1,5 +1,4 @@
 import * as React$1 from 'react';
-import { PDFDocumentProxy } from 'react-pdf';
 
 type Props$g = {
     className?: string;
@@ -246,6 +245,8 @@ type Props = {
     children?: React$1.ReactElement | Array<React$1.ReactElement>;
 };
 declare const ContextProvider: React$1.FunctionComponent<Props>;
+
+type PDFDocumentProxy = any;
 
 interface IDocumentContext {
     numPages: number;

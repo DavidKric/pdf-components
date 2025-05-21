@@ -20,7 +20,7 @@ export const ZoomInButton: React.FunctionComponent<Props> = ({
   const { scale, setScale, zoomIncrementValue } = React.useContext(TransformContext);
 
   const handleZoomIn = React.useCallback(
-    (event): void => {
+    (event: React.MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
       const newScaleValue = scale + zoomIncrementValue;

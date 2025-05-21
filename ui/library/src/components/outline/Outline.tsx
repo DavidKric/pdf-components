@@ -1,10 +1,12 @@
+'use client';
 import * as React from 'react';
 
 import { buildOutlinePositions, DocumentContext } from '../../context/DocumentContext';
 import { ScrollContext } from '../../context/ScrollContext';
 import { NodeDestination, OutlineNode } from '../types/outline';
 import { OutlineItem } from './OutlineItem';
-import type { PDFDocumentProxy } from 'react-pdf';
+// import type { PDFDocumentProxy } from 'react-pdf';
+type PDFDocumentProxy = any;
 
 export const Outline: React.FunctionComponent = ({ ...extraProps }) => {
   const { outline, pdfDocProxy, setOutline, setOutlinePositions } =

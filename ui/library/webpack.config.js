@@ -29,6 +29,17 @@ module.exports = (env, argv) => {
     devtool: 'eval-source-map',
     resolve: {
       extensions: ['.tsx', '.ts', '.js', '.jsx'],
+      fallback: {
+        fs: false,
+        http: false,
+        https: false,
+        path: false,
+        os: false,
+        crypto: false,
+        stream: false,
+        zlib: false,
+        url: false,
+      },
     },
     plugins: [
       new RemovePlugin({

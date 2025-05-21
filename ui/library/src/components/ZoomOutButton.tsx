@@ -20,7 +20,7 @@ export const ZoomOutButton: React.FunctionComponent = ({
   const { scale, setScale, zoomIncrementValue } = React.useContext(TransformContext);
 
   const handleZoomOut = React.useCallback(
-    (event): void => {
+    (event: React.MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
       const newScaleValue = scale - zoomIncrementValue;

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { pdfjs as anyPdfjs } from 'react-pdf';
-import type { PDFDocumentProxy } from 'react-pdf';
+// import type { PDFDocumentProxy } from 'react-pdf';
+type PDFDocumentProxy = any;
 
 import { PageNumber } from '../components/types/page';
 import { Nullable } from '../components/types/utils';

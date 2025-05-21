@@ -1,0 +1,93 @@
+Arguments: 
+  /usr/local/bin/node /usr/local/bin/yarn install
+
+PATH: 
+  /Users/newmacbookpro/.local/bin:/Users/newmacbookpro/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/usr/local/share/dotnet:~/.dotnet/tools:/usr/local/opt/postgresql@15/bin:/usr/local/opt/openjdk@17/bin:/usr/local/opt/poppler-qt5/bin:/Users/newmacbookpro/.local/bin:/Users/newmacbookpro/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/Library/Frameworks/Python.framework/Versions/3.11/bin:/Users/newmacbookpro/.cargo/bin:/Users/newmacbookpro/.dotnet/tools
+
+Yarn version: 
+  1.22.19
+
+Node version: 
+  20.9.0
+
+Platform: 
+  darwin x64
+
+Trace: 
+  Error: EACCES: permission denied, mkdir '/Users/newmacbookpro/Developmet workspace/pdf-components/ui/library/node_modules/chokidar/node_modules/readdirp'
+
+npm manifest: 
+  {
+    "name": "davidkrichley-pdf-components",
+    "version": "0.0.1",
+    "license": "Apache-2.0",
+    "author": "david krichley",
+    "main": "dist/index.cjs",
+    "module": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "style": "dist/style.css",   
+    "files": ["dist"],
+  
+    "scripts": {
+      "clean": "rimraf dist",
+      "build": "npm run clean && tsup ./index.ts --dts --format esm,cjs --out-dir dist --external canvas && cp css/index.css dist/style.css",
+      "old_build": "tsc && webpack --mode production && cp package.publish.json dist/package.json && cd dist && npm pack",
+      "lint": "eslint '**/*.{js,ts,tsx,json}' && echo '💫  Lint complete.'",
+      "lint:fix": "eslint '**/*.{js,ts,tsx,json}' --fix && npx sort-package-json  && echo '🛠  Lint --fix complete'",
+      "test": "ts-mocha --require jsdom.setup.js --require test.setup.ts -p tsconfig.json 'test/**/*.test.ts{,?}' --exit"
+    },
+    "resolutions": {
+      "glob-parent": "^6.0.0",
+      "minimist": "^1.2.6",
+      "nanoid": "^3.1.31"
+    },
+    "dependencies": {
+      "classnames": "2.3.1"
+    },
+    "devDependencies": {
+      "rimraf": "^5.0.0",
+      "tsup": "^8.0.0",
+      "@types/chai": "4.2.21",
+      "@types/mocha": "8.2.3",
+      "@types/node": "11.9.5",
+      "@types/sinon": "10.0.2",
+      "@typescript-eslint/eslint-plugin": "4.28.2",
+      "@typescript-eslint/parser": "4.28.2",
+      "chai": "4.3.4",
+      "copy-webpack-plugin": "9.1.0",
+      "css-loader": "5.2.6",
+      "eslint": "7.30.0",
+      "eslint-config-prettier": "8.3.0",
+      "eslint-plugin-node": "11.1.0",
+      "eslint-plugin-prettier": "3.4.0",
+      "eslint-plugin-react": "7.24.0",
+      "eslint-plugin-simple-import-sort": "7.0.0",
+      "jsdom": "16.6.0",
+      "mini-css-extract-plugin": "2.4.3",
+      "mocha": "8.4.0",
+      "prettier": "2.3.2",
+      "remove-files-webpack-plugin": "1.4.5",
+      "sinon": "14.0.0",
+      "style-loader": "3.1.0",
+      "ts-loader": "9.2.3",
+      "ts-mocha": "8.0.0",
+      "typescript": "^5.8.3",
+      "webpack": "^5.99.8",
+      "webpack-bundle-analyzer": "4.6.1",
+      "webpack-cli": "^5.1.4",
+      "webpack-node-externals": "3.0.0",
+      "@types/react": "^19.0.0",
+      "@types/react-dom": "^19.0.0"
+    },
+    "peerDependencies": {
+      "react": "^19.0.0",
+      "react-dom": "^19.0.0",
+      "react-is": "^19.0.0"
+    }
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile

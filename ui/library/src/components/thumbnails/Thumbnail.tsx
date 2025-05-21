@@ -31,7 +31,7 @@ export const Thumbnail: React.FunctionComponent<Props> = ({ pageNumber }: Props)
     isPageVisible({ pageNumber });
 
   const onClick = React.useCallback(
-    event => {
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
       scrollToPage({ pageNumber });
     },

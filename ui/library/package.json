@@ -1,14 +1,23 @@
 {
-  "name": "davidkrichley/pdf-components",
-  "version": "0.0.1",
+  "name": "@davidkric/pdf-components",
+  "version": "0.0.2",
   "license": "Apache-2.0",
   "author": "david krichley",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "style": "dist/style.css",   
-  "files": ["dist"],
-
+  "style": "dist/style.css",
+  "files": [
+    "dist"
+  ],
+  "browser": {
+    "fs": false,
+    "path": false,
+    "http": false,
+    "https": false,
+    "zlib": false,
+    "canvas": false
+  },
   "scripts": {
     "clean": "rimraf dist",
     "build": "npm run clean && tsup ./index.ts --dts --format esm,cjs --out-dir dist --external canvas && cp css/index.css dist/style.css",
@@ -26,11 +35,11 @@
     "classnames": "2.3.1"
   },
   "devDependencies": {
-    "rimraf": "^5.0.0",
-    "tsup": "^8.0.0",
     "@types/chai": "4.2.21",
     "@types/mocha": "8.2.3",
     "@types/node": "11.9.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@types/sinon": "10.0.2",
     "@typescript-eslint/eslint-plugin": "4.28.2",
     "@typescript-eslint/parser": "4.28.2",
@@ -47,11 +56,14 @@
     "mini-css-extract-plugin": "2.4.3",
     "mocha": "8.4.0",
     "prettier": "2.3.2",
+    "react-pdf": "^9.2.1",
     "remove-files-webpack-plugin": "1.4.5",
+    "rimraf": "^5.0.0",
     "sinon": "14.0.0",
     "style-loader": "3.1.0",
     "ts-loader": "9.2.3",
     "ts-mocha": "8.0.0",
+    "tsup": "^8.0.0",
     "typescript": "^5.8.3",
     "webpack": "^5.99.8",
     "webpack-bundle-analyzer": "4.6.1",
@@ -59,8 +71,9 @@
     "webpack-node-externals": "3.0.0"
   },
   "peerDependencies": {
-    "react": "^17.0.0",
-    "react-dom": "^17.0.0"
-    
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-is": "^18.0.0",
+    "react-pdf": "^9.2.1"
   }
 }

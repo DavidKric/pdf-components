@@ -6,7 +6,7 @@
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "jsx": "react",
+    "jsx": "react-jsx",
     "sourceMap": true,
     "esModuleInterop": true,
     "baseUrl": ".",

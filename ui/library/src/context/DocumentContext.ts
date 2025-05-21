@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { pdfjs } from 'react-pdf';
-import type { PDFDocumentProxy } from 'react-pdf';
+// import type { PDFDocumentProxy } from 'react-pdf';
+type PDFDocumentProxy = any;
 
 import { Dimensions } from '../components/types/boundingBox';
 import {

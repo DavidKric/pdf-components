@@ -1,3 +1,4 @@
+'use client';
 import classnames from 'classnames';
 import * as React from 'react';
 
@@ -13,7 +14,7 @@ export type Props = {
 const DELAY_SCROLL_TIME_OUT_MS = 1000;
 
 export const PageNumberControl: React.FunctionComponent<Props> = ({ className }: Props) => {
-  const delayTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
+  const delayTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const { numPages } = React.useContext(DocumentContext);
   const { scrollToPage, visiblePageRatios } = React.useContext(ScrollContext);
   const [minPage, setMinPage] = React.useState<number>(0);
