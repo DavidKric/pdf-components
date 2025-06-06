@@ -2,20 +2,6 @@
  * PDF Component Library exports
  */
 
-/**
- * Main entry point for the PDF Component Library.
- * Exports all core components, contexts, utilities, and types.
- * @packageVersion 0.0.1
- */
-
-export const VERSION = '0.0.1';
-
-export const CONSTANTS = {
-  DEFAULT_ZOOM_SCALE,
-  RENDER_TYPE,
-  POSITION,
-} as const;
-
 import './css/index.css';
 
 import { BoundingBox, Props as BoundingBoxProps } from './src/components/BoundingBox';
@@ -61,7 +47,6 @@ import {
 } from './src/context/TransformContext';
 import { IUiContext, UiContext } from './src/context/UiContext';
 import { PercentFormatter } from './src/utils/format';
-import { initPdfWorker } from './src/utils/pdfWorker';
 import { RENDER_TYPE } from './src/utils/reader-utils';
 import {
   isSideways,
@@ -123,7 +108,6 @@ export {
   getPageWidth,
   HighlightOverlay,
   IconFlag,
-  initPdfWorker,
   isSideways,
   Outline,
   OutlineItem,
@@ -151,8 +135,6 @@ export {
 };
 
 export default {
-  ArrowFlag,
-  ArrowFlagBase,
   BoundingBox,
   computeBoundingBoxStyle,
   computePageStyle,
@@ -161,12 +143,14 @@ export default {
   DocumentContext,
   DocumentWrapper,
   DownloadButton,
+  ArrowFlag,
+  ArrowFlagBase,
+  PrintButton,
   generatePageIdFromIndex,
   getPageHeight,
   getPageWidth,
   HighlightOverlay,
   IconFlag,
-  initPdfWorker,
   isSideways,
   Outline,
   OutlineItem,
@@ -175,19 +159,18 @@ export default {
   PageRenderContext,
   PageRotation,
   PageWrapper,
-  PercentFormatter,
   POSITION,
-  PrintButton,
+  SidePanel,
+  PercentFormatter,
   RENDER_TYPE,
   rotateClockwise,
   rotateCounterClockwise,
   scaleRawBoundingBox,
-  ScrollContext,
   scrollToId,
   scrollToPdfPageIndex,
-  SidePanel,
   Thumbnail,
   ThumbnailList,
+  ScrollContext,
   TransformContext,
   UiContext,
   ZoomInButton,

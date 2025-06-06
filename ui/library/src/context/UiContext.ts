@@ -53,6 +53,31 @@ export function useUiContextProps(): IUiContext {
   const [isShowingTextHighlight, setIsShowingTextHighlight] = React.useState<boolean>(false);
   const [isShowingThumbnail, setIsShowingThumbnail] = React.useState<boolean>(false);
 
+  // Memoize setters to prevent infinite re-renders in components that use them as dependencies
+  const memoizedSetErrorMessage = React.useCallback((errorMessage: Nullable<string>) => {
+    setErrorMessage(errorMessage);
+  }, []);
+
+  const memoizedSetIsLoading = React.useCallback((isLoading: boolean) => {
+    setIsLoading(isLoading);
+  }, []);
+
+  const memoizedSetIsShowingHighlightOverlay = React.useCallback((isShowingHighlightOverlay: boolean) => {
+    setIsShowingHighlightOverlay(isShowingHighlightOverlay);
+  }, []);
+
+  const memoizedSetIsShowingOutline = React.useCallback((isShowingOutline: boolean) => {
+    setIsShowingOutline(isShowingOutline);
+  }, []);
+
+  const memoizedSetIsShowingTextHighlight = React.useCallback((isShowingTextHighlight: boolean) => {
+    setIsShowingTextHighlight(isShowingTextHighlight);
+  }, []);
+
+  const memoizedSetIsShowingThumbnail = React.useCallback((isShowingThumbnail: boolean) => {
+    setIsShowingThumbnail(isShowingThumbnail);
+  }, []);
+
   return {
     errorMessage,
     isLoading,
@@ -60,11 +85,11 @@ export function useUiContextProps(): IUiContext {
     isShowingOutline,
     isShowingTextHighlight,
     isShowingThumbnail,
-    setErrorMessage,
-    setIsLoading,
-    setIsShowingHighlightOverlay,
-    setIsShowingOutline,
-    setIsShowingTextHighlight,
-    setIsShowingThumbnail,
+    setErrorMessage: memoizedSetErrorMessage,
+    setIsLoading: memoizedSetIsLoading,
+    setIsShowingHighlightOverlay: memoizedSetIsShowingHighlightOverlay,
+    setIsShowingOutline: memoizedSetIsShowingOutline,
+    setIsShowingTextHighlight: memoizedSetIsShowingTextHighlight,
+    setIsShowingThumbnail: memoizedSetIsShowingThumbnail,
   };
 }

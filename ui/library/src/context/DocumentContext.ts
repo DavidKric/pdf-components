@@ -73,6 +73,31 @@ export function useDocumentContextProps(): IDocumentContext {
   });
   const [pdfDocProxy, setPdfDocProxy] = React.useState<PDFDocumentProxy>();
 
+  // Memoize setters to prevent infinite re-renders in components that use them as dependencies
+  const memoizedSetNumPages = React.useCallback((numPages: number) => {
+    setNumPages(numPages);
+  }, []);
+
+  const memoizedSetNumPagesLoaded = React.useCallback((numPagesLoaded: number | ((prevNumPagesLoaded: number) => number)) => {
+    setNumPagesLoaded(numPagesLoaded);
+  }, []);
+
+  const memoizedSetOutline = React.useCallback((outline: Nullable<Array<OutlineNode>>) => {
+    setOutline(outline);
+  }, []);
+
+  const memoizedSetOutlinePositions = React.useCallback((outlinePositions: Nullable<OutlinePositionsByPageNumberMap>) => {
+    setOutlinePositions(outlinePositions);
+  }, []);
+
+  const memoizedSetPageDimensions = React.useCallback((pageDimensions: Dimensions) => {
+    setPageDimensions(pageDimensions);
+  }, []);
+
+  const memoizedSetPdfDocProxy = React.useCallback((pdfDocProxy: PDFDocumentProxy) => {
+    setPdfDocProxy(pdfDocProxy);
+  }, []);
+
   // Draw outline target into the pdf based on the args
   const getOutlineTargets = React.useCallback(
     ({
@@ -115,12 +140,12 @@ export function useDocumentContextProps(): IDocumentContext {
     pageDimensions,
     pdfDocProxy,
     getOutlineTargets,
-    setNumPages,
-    setNumPagesLoaded,
-    setOutline,
-    setOutlinePositions,
-    setPageDimensions: setPageDimensions,
-    setPdfDocProxy,
+    setNumPages: memoizedSetNumPages,
+    setNumPagesLoaded: memoizedSetNumPagesLoaded,
+    setOutline: memoizedSetOutline,
+    setOutlinePositions: memoizedSetOutlinePositions,
+    setPageDimensions: memoizedSetPageDimensions,
+    setPdfDocProxy: memoizedSetPdfDocProxy,
   };
 }
 

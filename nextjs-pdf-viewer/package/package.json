@@ -1,6 +1,6 @@
 {
   "name": "@davidkric/pdf-components",
-  "version": "0.0.9",
+  "version": "0.0.3",
   "license": "Apache-2.0",
   "author": "david krichley",
   "main": "dist/index.cjs",

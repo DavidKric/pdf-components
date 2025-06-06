@@ -1,0 +1,13 @@
+{
+  "0": [
+    { "page": 0, "top": 465, "left": 500, "height": 15, "width": 140 },
+    { "page": 0, "top": 480, "left": 180, "height": 15, "width": 450 },
+    { "page": 0, "top": 495, "left": 180, "height": 15, "width": 450 },
+    { "page": 0, "top": 510, "left": 180, "height": 15, "width": 105 }
+  ],
+  "1": [
+    { "page": 1, "top": 235, "left": 130, "height": 15, "width": 550 },
+    { "page": 1, "top": 250, "left": 130, "height": 15, "width": 550 },
+    { "page": 1, "top": 265, "left": 130, "height": 15, "width": 200 }
+  ]
+} 

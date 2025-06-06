@@ -1,8 +1,7 @@
 'use client';
 import classnames from 'classnames';
 import * as React from 'react';
-// For React-PDF v9 compatibility
-const { Page } = require('react-pdf');
+import { Page } from 'react-pdf';
 
 import { DocumentContext } from '../context/DocumentContext';
 import { PageRenderContext } from '../context/PageRenderContext';
@@ -18,7 +17,7 @@ import { Overlay } from './Overlay';
  * A subset of react-pdf's Page component props exposed by this wrapper
  */
 export type PageProps = {
-  error?: React.ReactNode | ((props: { error: Error }) => React.ReactNode);
+  error?: React.ReactNode | (() => React.ReactNode);
   loading?: React.ReactNode | (() => React.ReactNode);
   noData?: React.ReactNode | (() => React.ReactNode);
   pageIndex: number;
@@ -45,27 +44,14 @@ export const PageWrapper: React.FunctionComponent<Props> = ({
   const { pageDimensions, getOutlineTargets, setNumPagesLoaded } =
     React.useContext(DocumentContext);
   const { getObjectURLForPage, isBuildingObjectURLForPage } = React.useContext(PageRenderContext);
-  const { isLoading, errorMessage } = React.useContext(UiContext);
+  const { isLoading } = React.useContext(UiContext);
 
   const objectURLForPage = getObjectURLForPage({ pageIndex });
   const isBuildingPageImage = isBuildingObjectURLForPage({ pageIndex });
 
-  // If we don't have valid page size data, show the loading or error states
-  if (!pageDimensions?.height || !pageDimensions?.width) {
-    if (isLoading && loading) {
-      return <>{typeof loading === 'function' ? loading() : loading}</>;
-    }
-    if (!isLoading && errorMessage && error) {
-      const err = new Error(errorMessage);
-      return <>{typeof error === 'function' ? error({ error: err }) : error}</>;
-    }
-    if (!isLoading && !errorMessage && noData) {
-      return <>{typeof noData === 'function' ? noData() : noData}</>;
-    }
-    return null;
-  }
-
+  // All hooks must be called before any conditional returns
   const getPageStyle = React.useCallback(() => {
+    if (!pageDimensions) return {};
     const styles: Record<string, unknown> = computePageStyle(pageDimensions, rotation, scale);
     if (objectURLForPage) {
       styles.backgroundImage = `url(${objectURLForPage})`;
@@ -74,8 +60,19 @@ export const PageWrapper: React.FunctionComponent<Props> = ({
   }, [pageDimensions, rotation, scale, objectURLForPage]);
 
   const getWidth = React.useCallback(() => {
+    if (!pageDimensions) return 0;
     return getPageWidth(pageDimensions, rotation);
   }, [pageDimensions, rotation]);
+
+  const markPageAsLoaded = React.useCallback(() => {
+    setNumPagesLoaded(prevNumPagesLoaded => prevNumPagesLoaded + 1);
+  }, []);
+
+  // Don't display until we have page size data
+  // TODO: Handle this nicer so we display either the loading or error treatment
+  if (!pageDimensions) {
+    return null;
+  }
 
   const outlineTargets = getOutlineTargets({
     pageIndex,
@@ -84,12 +81,9 @@ export const PageWrapper: React.FunctionComponent<Props> = ({
     pageDimensions,
   });
 
-  const markPageAsLoaded = React.useCallback(({ items, styles }: { items: any; styles: any }) => {
-    setNumPagesLoaded(prevNumPagesLoaded => prevNumPagesLoaded + 1);
-  }, []);
-
   // Width needs to be set to prevent the outermost Page div from extending to fit the parent,
   // and mis-aligning the text layer.
+  // TODO: Can we CSS this to auto-shrink?
   return (
     <div
       id={generatePageIdFromIndex(pageIndex)}

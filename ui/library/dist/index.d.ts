@@ -1,4 +1,5 @@
 import * as React$1 from 'react';
+import { DocumentProps } from 'react-pdf';
 
 type Props$g = {
     className?: string;
@@ -45,16 +46,8 @@ type RenderType = typeof RENDER_TYPE[keyof typeof RENDER_TYPE];
 
 type Props$d = {
     children?: React$1.ReactNode;
-    className?: string;
-    file?: string | Uint8Array | {
-        data: Uint8Array;
-    } | null;
-    inputRef?: React$1.RefObject<HTMLDivElement>;
-    options?: any;
-    renderType?: typeof RENDER_TYPE[keyof typeof RENDER_TYPE];
-    error?: React$1.ReactNode | ((error: Error) => React$1.ReactNode);
-    loading?: React$1.ReactNode | (() => React$1.ReactNode);
-};
+    renderType: RenderType;
+} & DocumentProps;
 declare const DocumentWrapper: React$1.FunctionComponent<Props$d>;
 
 type Props$c = {
@@ -170,9 +163,7 @@ declare const Overlay: React$1.FunctionComponent<Props$6>;
  * A subset of react-pdf's Page component props exposed by this wrapper
  */
 type PageProps = {
-    error?: React$1.ReactNode | ((props: {
-        error: Error;
-    }) => React$1.ReactNode);
+    error?: React$1.ReactNode | (() => React$1.ReactNode);
     loading?: React$1.ReactNode | (() => React$1.ReactNode);
     noData?: React$1.ReactNode | (() => React$1.ReactNode);
     pageIndex: number;
@@ -342,8 +333,6 @@ declare const UiContext: React$1.Context<IUiContext>;
 
 declare const PercentFormatter: Intl.NumberFormat;
 
-declare function initPdfWorker(): void;
-
 declare function generatePageIdFromIndex(pageIndex: number | string): string;
 declare function scrollToId(id: string): void;
 declare function scrollToPdfPageIndex(pageIndex: number | string): void;
@@ -353,25 +342,15 @@ declare function computePageStyle(pageDimensions: Dimensions, rotation: PageRota
 declare function getPageHeight(pageDimensions: Dimensions, rotation: PageRotation): number;
 declare function getPageWidth(pageDimensions: Dimensions, rotation: PageRotation): number;
 
-/**
- * Main entry point for the PDF Component Library.
- * Exports all core components, contexts, utilities, and types.
- * @packageVersion 0.0.1
- */
-declare const VERSION = "0.0.1";
-declare const CONSTANTS: {
-    readonly DEFAULT_ZOOM_SCALE: 1;
-    readonly RENDER_TYPE: {
-        readonly MULTI_CANVAS: "multi-canvas";
-        readonly SINGLE_CANVAS: "single-canvas";
-    };
-    readonly POSITION: {
-        readonly LEFT: "LEFT";
-        readonly RIGHT: "RIGHT";
-    };
-};
-
 declare const _default: {
+    BoundingBox: React$1.FunctionComponent<Props$e>;
+    computeBoundingBoxStyle: typeof computeBoundingBoxStyle;
+    computePageStyle: typeof computePageStyle;
+    ContextProvider: React$1.FunctionComponent<Props>;
+    DEFAULT_ZOOM_SCALE: number;
+    DocumentContext: React$1.Context<IDocumentContext>;
+    DocumentWrapper: React$1.FunctionComponent<Props$d>;
+    DownloadButton: React$1.FunctionComponent<Props$c>;
     ArrowFlag: React$1.FunctionComponent<{
         boundingBoxes: Array<BoundingBox$1>;
         className?: string;
@@ -386,14 +365,7 @@ declare const _default: {
         tailLength?: number;
         tailWidgth?: number;
     }>;
-    BoundingBox: React$1.FunctionComponent<Props$e>;
-    computeBoundingBoxStyle: typeof computeBoundingBoxStyle;
-    computePageStyle: typeof computePageStyle;
-    ContextProvider: React$1.FunctionComponent<Props>;
-    DEFAULT_ZOOM_SCALE: number;
-    DocumentContext: React$1.Context<IDocumentContext>;
-    DocumentWrapper: React$1.FunctionComponent<Props$d>;
-    DownloadButton: React$1.FunctionComponent<Props$c>;
+    PrintButton: React$1.FunctionComponent<Props$4>;
     generatePageIdFromIndex: typeof generatePageIdFromIndex;
     getPageHeight: typeof getPageHeight;
     getPageWidth: typeof getPageWidth;
@@ -403,7 +375,6 @@ declare const _default: {
         className?: string;
         headerPosition?: PositionType;
     }>;
-    initPdfWorker: typeof initPdfWorker;
     isSideways: typeof isSideways;
     Outline: React$1.FunctionComponent<{}>;
     OutlineItem: React$1.FunctionComponent<{
@@ -415,12 +386,12 @@ declare const _default: {
     PageRenderContext: React$1.Context<IPageRenderContext>;
     PageRotation: typeof PageRotation;
     PageWrapper: React$1.FunctionComponent<Props$5>;
-    PercentFormatter: Intl.NumberFormat;
     POSITION: {
         readonly LEFT: "LEFT";
         readonly RIGHT: "RIGHT";
     };
-    PrintButton: React$1.FunctionComponent<Props$4>;
+    SidePanel: React$1.FunctionComponent<Props$3>;
+    PercentFormatter: Intl.NumberFormat;
     RENDER_TYPE: {
         readonly MULTI_CANVAS: "multi-canvas";
         readonly SINGLE_CANVAS: "single-canvas";
@@ -428,18 +399,17 @@ declare const _default: {
     rotateClockwise: typeof rotateClockwise;
     rotateCounterClockwise: typeof rotateCounterClockwise;
     scaleRawBoundingBox: typeof scaleRawBoundingBox;
-    ScrollContext: React$1.Context<IScrollContext>;
     scrollToId: typeof scrollToId;
     scrollToPdfPageIndex: typeof scrollToPdfPageIndex;
-    SidePanel: React$1.FunctionComponent<Props$3>;
     Thumbnail: React$1.FunctionComponent<{
         pageNumber: number;
     }>;
     ThumbnailList: React$1.FunctionComponent<any>;
+    ScrollContext: React$1.Context<IScrollContext>;
     TransformContext: React$1.Context<ITransformContext>;
     UiContext: React$1.Context<IUiContext>;
     ZoomInButton: React$1.FunctionComponent<Props$g>;
     ZoomOutButton: React$1.FunctionComponent<{}>;
 };
 
-export { ArrowFlag, ArrowFlagBase, BoundingBox, type Props$e as BoundingBoxProps, type BoundingBox$1 as BoundingBoxType, CONSTANTS, ContextProvider, type Props as ContextProviderProps, DEFAULT_ZOOM_SCALE, type Dimensions, DocumentContext, DocumentWrapper, type Props$d as DocumentWrapperProps, DownloadButton, type Props$c as DownloadButtonProps, HighlightOverlay, type Props$b as HighlightOverlayProps, type IDocumentContext, type IPageRenderContext, type IScrollContext, type ITransformContext, type IUiContext, IconFlag, type NodeDestination, type Nullable, type Origin, Outline, OutlineItem, type OutlineNode, Overlay, type Props$6 as OverlayProps, POSITION, PageNumberControl, type PageProperties, type PageProps, type PageReference, PageRenderContext, PageRotation, PageWrapper, type Props$5 as PageWrapperProps, PercentFormatter, type PositionType, PrintButton, type Props$4 as PrintButtonProps, RENDER_TYPE, type RawBoundingBox, ScrollContext, SidePanel, type Props$3 as SidePanelProps, type Size, Thumbnail, ThumbnailList, TransformContext, UiContext, VERSION, ZoomInButton, ZoomOutButton, computeBoundingBoxStyle, computePageStyle, _default as default, generatePageIdFromIndex, getPageHeight, getPageWidth, initPdfWorker, isSideways, rotateClockwise, rotateCounterClockwise, scaleRawBoundingBox, scrollToId, scrollToPdfPageIndex };
+export { ArrowFlag, ArrowFlagBase, BoundingBox, type Props$e as BoundingBoxProps, type BoundingBox$1 as BoundingBoxType, ContextProvider, type Props as ContextProviderProps, DEFAULT_ZOOM_SCALE, type Dimensions, DocumentContext, DocumentWrapper, type Props$d as DocumentWrapperProps, DownloadButton, type Props$c as DownloadButtonProps, HighlightOverlay, type Props$b as HighlightOverlayProps, type IDocumentContext, type IPageRenderContext, type IScrollContext, type ITransformContext, type IUiContext, IconFlag, type NodeDestination, type Nullable, type Origin, Outline, OutlineItem, type OutlineNode, Overlay, type Props$6 as OverlayProps, POSITION, PageNumberControl, type PageProperties, type PageProps, type PageReference, PageRenderContext, PageRotation, PageWrapper, type Props$5 as PageWrapperProps, PercentFormatter, type PositionType, PrintButton, type Props$4 as PrintButtonProps, RENDER_TYPE, type RawBoundingBox, ScrollContext, SidePanel, type Props$3 as SidePanelProps, type Size, Thumbnail, ThumbnailList, TransformContext, UiContext, ZoomInButton, ZoomOutButton, computeBoundingBoxStyle, computePageStyle, _default as default, generatePageIdFromIndex, getPageHeight, getPageWidth, isSideways, rotateClockwise, rotateCounterClockwise, scaleRawBoundingBox, scrollToId, scrollToPdfPageIndex };
