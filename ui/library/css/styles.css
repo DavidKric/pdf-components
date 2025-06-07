@@ -1,7 +1,5 @@
 .pdf-reader__page {
-  margin: 0 auto 4px auto;
-  max-width: none;
-  width: auto;
+  margin: 24px;
   box-shadow: 0px 4px 14px rgba(0, 0, 0, 0.2);
   background: #fff;
   position: relative;

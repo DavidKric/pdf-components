@@ -34,7 +34,7 @@ export const Outline: React.FunctionComponent = ({ ...extraProps }) => {
       .then(() => {
         resetScrollObservers();
       });
-  }, [outline]);
+  }, [outline, pdfDocProxy, setOutline, setOutlinePositions, resetScrollObservers]);
 
   const clickHandler = React.useCallback((dest: NodeDestination): void => {
     if (!dest) {
@@ -42,7 +42,7 @@ export const Outline: React.FunctionComponent = ({ ...extraProps }) => {
     }
     scrollToOutlineTarget(dest);
     return;
-  }, []);
+  }, [scrollToOutlineTarget]);
 
   if (!pdfDocProxy) {
     return null;

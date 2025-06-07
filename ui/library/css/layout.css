@@ -1,0 +1,20 @@
+/* File: ui/library/css/layout.css */
+
+.pdf-reader__page-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .pdf-reader__page {
+    margin: 24px;
+    position: relative;
+  }
+  
+  /* Optionally remove unwanted stacking context creation */
+  .pdf-reader__container {
+    position: static;
+    z-index: auto;
+    transform: none;
+  }
+  

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@davidkric/pdf-components": "file:davidkric-pdf-components-1.0.0.tgz",
+    "canvas": "^2.11.2",
     "geist": "^1.2.1",
     "next": "15.3.2",
     "react": "^18.2.0",

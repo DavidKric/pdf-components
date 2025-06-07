@@ -42,14 +42,31 @@ export function useTransformContextProps(): ITransformContext {
   const [scale, setScale] = React.useState<number>(DEFAULT_ZOOM_SCALE);
   const [zoomIncrementValue, setZoomIncrementValue] = React.useState<number>(0.2);
 
+  // Memoize setters to prevent infinite re-renders in components that use them as dependencies
+  const memoizedSetPixelRatio = React.useCallback((pixelRatio: number) => {
+    setPixelRatio(pixelRatio);
+  }, []);
+
+  const memoizedSetRotation = React.useCallback((rotation: PageRotation) => {
+    setRotation(rotation);
+  }, []);
+
+  const memoizedSetScale = React.useCallback((scale: number) => {
+    setScale(scale);
+  }, []);
+
+  const memoizedSetZoomIncrementValue = React.useCallback((value: number) => {
+    setZoomIncrementValue(value);
+  }, []);
+
   return {
     pixelRatio,
     rotation,
     scale,
-    setPixelRatio,
-    setRotation,
-    setScale,
     zoomIncrementValue,
-    setZoomIncrementValue,
+    setPixelRatio: memoizedSetPixelRatio,
+    setRotation: memoizedSetRotation,
+    setScale: memoizedSetScale,
+    setZoomIncrementValue: memoizedSetZoomIncrementValue,
   };
 }

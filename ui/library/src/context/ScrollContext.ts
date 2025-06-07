@@ -137,8 +137,8 @@ export function useScrollContextProps(): IScrollContext {
   // Causes the IntersectionObservers to disconnect and be recreated (useful when DOM changes)
   const [observerIndex, setObserverIndex] = React.useState(0);
   const resetScrollObservers = React.useCallback(() => {
-    setObserverIndex(observerIndex + 1);
-  }, [observerIndex]);
+    setObserverIndex(prev => prev + 1);
+  }, []);
 
   const [visibleOutlineTargets, setVisibleOutlineNodes] = React.useState<
     Map<NodeDestination, VisibleEntryDetailType>
@@ -298,6 +298,23 @@ export function useScrollContextProps(): IScrollContext {
     [scrollRoot]
   );
 
+  // Memoize remaining setters to prevent infinite re-renders in components that use them as dependencies
+  const memoizedSetScrollRoot = React.useCallback((root: Nullable<HTMLElement>) => {
+    setScrollRoot(root);
+  }, []);
+
+  const memoizedSetScrollThreshold = React.useCallback((scrollThreshold: Nullable<number>) => {
+    setScrollThreshold(scrollThreshold);
+  }, []);
+
+  const memoizedSetIsOutlineClicked = React.useCallback((isOutlineClicked: boolean) => {
+    setIsOutlineClicked(isOutlineClicked);
+  }, []);
+
+  const memoizedSetPageScrolledIntoViewThreshold = React.useCallback((threshold: number) => {
+    setPageScrolledIntoViewThreshold(threshold);
+  }, []);
+
   return {
     isOutlineTargetVisible,
     isPageVisible,
@@ -306,16 +323,16 @@ export function useScrollContextProps(): IScrollContext {
     visiblePageRatios,
     resetScrollObservers,
     scrollRoot,
-    setScrollRoot,
+    setScrollRoot: memoizedSetScrollRoot,
     scrollToOutlineTarget,
-    setScrollThreshold,
+    setScrollThreshold: memoizedSetScrollThreshold,
     scrollToPage,
     updateScrollPosition,
-    setIsOutlineClicked,
+    setIsOutlineClicked: memoizedSetIsOutlineClicked,
     scrollThresholdReachedInDirection,
     isAtTop,
     isOutlineClicked,
     pagesScrolledIntoView,
-    setPageScrolledIntoViewThreshold,
+    setPageScrolledIntoViewThreshold: memoizedSetPageScrolledIntoViewThreshold,
   };
 }

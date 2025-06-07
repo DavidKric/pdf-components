@@ -56,13 +56,18 @@ body {
   position: relative;
 }
 
-/* 2) Remove Tailwind’s automatic canvas/img resizing inside reader   */
+/* 2) CRITICAL: PDF overlay positioning (fixes invisible pages) */
+.pdf-reader__overlay {
+  position: absolute !important;
+}
+
+/* 3) Remove Tailwind's automatic canvas/img resizing inside reader   */
 .pdf-reader__page canvas,
 .pdf-reader__page img {
   max-width: none !important;  /* critical – keep bitmap at true size */
 }
 
-/* 3) Undo Tailwind’s min-content constraint that appears on <Page>   */
+/* 4) Undo Tailwind's min-content constraint that appears on <Page>   */
 .react-pdf__Page {
   min-width: 0 !important;
   min-height: 0 !important;
