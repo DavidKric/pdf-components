@@ -45,33 +45,28 @@ body {
 }
 
 /* ------------------------------------------------------------------ */
-/*            PDF-viewer specific rules & safeguards                  */
+/*            Next.js specific PDF safeguards only                    */
 /* ------------------------------------------------------------------ */
 
-/* 1) Main page wrapper – let React-PDF dictate the width/height      */
-.pdf-reader__page {
-  margin: 32px auto 4px auto;
-  background: #fff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-  position: relative;
-}
-
-/* 2) CRITICAL: PDF overlay positioning (fixes invisible pages) */
-.pdf-reader__overlay {
-  position: absolute !important;
-}
-
-/* 3) Remove Tailwind's automatic canvas/img resizing inside reader   */
+/* Critical: Prevent Tailwind from shrinking PDF canvases or images */
 .pdf-reader__page canvas,
 .pdf-reader__page img {
-  max-width: none !important;  /* critical – keep bitmap at true size */
+  max-width: none !important;  /* Allow canvas to render at true native width */
+  height: auto !important;     /* Maintain aspect ratio */
 }
 
-/* 4) Undo Tailwind's min-content constraint that appears on <Page>   */
+/* Override any flex/min-content sizing on React-PDF Page containers */
 .react-pdf__Page {
   min-width: 0 !important;
   min-height: 0 !important;
-  margin-bottom: 0 !important; /* keep original: removes extra gap    */
+  margin-bottom: 0 !important; /* Remove any extra gap under pages */
+  width: auto !important;      /* Let PDF dictate natural width */
+}
+
+/* Ensure overlays don't interfere with page interaction */
+.pdf-reader__overlay-bounding-box-underline,
+.pdf-reader__page-highlight-overlay {
+  pointer-events: none !important;
 }
 
 /* ------------------------------------------------------------------ */

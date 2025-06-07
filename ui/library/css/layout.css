@@ -6,15 +6,10 @@
     align-items: center;
   }
   
-  .pdf-reader__page {
-    margin: 24px;
-    position: relative;
-  }
-  
-  /* Optionally remove unwanted stacking context creation */
+  /* Remove unwanted stacking context creation */
   .pdf-reader__container {
-    position: static;
-    z-index: auto;
-    transform: none;
+    position: static !important;
+    z-index: auto !important;
+    transform: none !important;
   }
   

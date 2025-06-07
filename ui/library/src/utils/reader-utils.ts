@@ -14,3 +14,7 @@ export function getRenderMode(renderType: RenderType): RenderMode {
       return 'canvas';
   }
 }
+
+export function getClassNameSuffixFromRenderType(renderType: RenderType): string {
+  return renderType;
+}

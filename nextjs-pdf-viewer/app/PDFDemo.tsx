@@ -114,7 +114,7 @@ function TopBar({ toggles, setToggles }: { toggles: FeatureToggles; setToggles: 
 
 function Sidebar({ toggles, setToggles, activeTab, setActiveTab }: { toggles: FeatureToggles; setToggles: React.Dispatch<React.SetStateAction<FeatureToggles>>; activeTab: string; setActiveTab: (tab: string) => void }) {
   return (
-    <div className="flex flex-col h-full w-72 bg-gray-900 text-white border-r shadow-lg pt-14 fixed left-0 top-0 z-20">
+    <div className="flex flex-col h-full w-72 bg-gray-900 text-white border-r shadow-lg pt-16 fixed left-0 top-0 z-20">
       <div className="flex flex-row w-full border-b border-gray-800">
         <button className={`flex-1 py-3 text-center font-semibold ${activeTab === 'thumbnails' ? 'bg-gray-800 text-yellow-300' : 'hover:bg-gray-800'}`} onClick={() => setActiveTab('thumbnails')}>Thumbnails</button>
         <button className={`flex-1 py-3 text-center font-semibold ${activeTab === 'toc' ? 'bg-gray-800 text-yellow-300' : 'hover:bg-gray-800'}`} onClick={() => setActiveTab('toc')}>Table Of Contents</button>
@@ -133,7 +133,7 @@ function Sidebar({ toggles, setToggles, activeTab, setActiveTab }: { toggles: Fe
 
 function RightSidebar({ toggles, onSkimClick, onCitationClick }: { toggles: FeatureToggles; onSkimClick: (h: any) => void; onCitationClick: (c: any) => void }) {
   return (
-    <div className="flex flex-col h-full w-80 bg-white border-l shadow-lg pt-14 fixed right-0 top-0 z-20">
+    <div className="flex flex-col h-full w-80 bg-white border-l shadow-lg pt-16 fixed right-0 top-0 z-20">
       <div className="flex flex-row w-full border-b border-gray-200">
         <div className="flex-1 py-3 text-center font-semibold text-blue-700 bg-blue-50">Skimming Highlights</div>
       </div>
@@ -212,9 +212,9 @@ function PDFMainArea({ toggles, scrollToBox }: { toggles: FeatureToggles; scroll
   }, [scrollToBox]);
 
   return (
-    <div className="flex-1 h-full bg-gray-100 ml-72 pt-14 mr-80 overflow-y-auto relative">
+    <div className={`pdf-reader__container flex-1 h-full bg-gray-100 pt-16 overflow-y-auto relative ${toggles.thumbnails ? 'ml-72' : 'ml-0'} ${toggles.rightSidebar ? 'mr-80' : 'mr-0'}`}>
       <DocumentWrapper file={PDF_URL} renderType={RENDER_TYPE.SINGLE_CANVAS}>
-        <React.Fragment>
+        <div className="pdf-reader__page-list">
           {Array.from({ length: numPages ?? 0 }).map((_, idx) => (
             <PageWrapper key={idx} pageIndex={idx} renderType={RENDER_TYPE.SINGLE_CANVAS}>
               <React.Fragment>
@@ -355,7 +355,7 @@ function PDFMainArea({ toggles, scrollToBox }: { toggles: FeatureToggles; scroll
               </React.Fragment>
             </PageWrapper>
           ))}
-        </React.Fragment>
+        </div>
       </DocumentWrapper>
     </div>
   );
@@ -379,7 +379,7 @@ export default function PDFDemo() {
     <ContextProvider>
       <div className="pdf-root fixed inset-0 w-screen h-screen">
         <div className="pdf-background absolute inset-0 bg-gray-900 z-0" />
-        <div className="pdf-document-container absolute inset-0 flex flex-col items-center justify-center z-10 overflow-y-auto">
+        <div className="pdf-document-container absolute inset-0 flex flex-col z-10">
           <PDFMainArea toggles={featureToggles} scrollToBox={scrollToBox} />
         </div>
         <div className="topbar-overlay fixed top-0 left-0 right-0 z-30">

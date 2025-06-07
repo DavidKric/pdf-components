@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@davidkric/pdf-components": "file:davidkric-pdf-components-1.0.0.tgz",
+    "@davidkric/pdf-components": "file:../ui/library/davidkric-pdf-components-1.0.0.tgz",
     "canvas": "^2.11.2",
     "geist": "^1.2.1",
     "next": "15.3.2",

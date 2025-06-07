@@ -15,8 +15,14 @@ export interface ITransformContext {
   setZoomIncrementValue: (value: number) => void;
 }
 
+// Cap pixel ratio to prevent excessive scaling on high DPI displays
+const getCappadPixelRatio = () => {
+  if (typeof window === 'undefined') return 1;
+  return Math.min(window.devicePixelRatio || 1, 1.5); // Cap at 1.5x for readability
+};
+
 export const TransformContext = React.createContext<ITransformContext>({
-  pixelRatio: (typeof window !== 'undefined' ? window.devicePixelRatio : null) || 1,
+  pixelRatio: getCappadPixelRatio(),
   rotation: PageRotation.Rotate0,
   scale: 1,
   zoomIncrementValue: 0.2,
@@ -35,9 +41,7 @@ export const TransformContext = React.createContext<ITransformContext>({
 });
 
 export function useTransformContextProps(): ITransformContext {
-  const [pixelRatio, setPixelRatio] = React.useState<number>(
-    (typeof window !== 'undefined' ? window.devicePixelRatio : null) || 1
-  );
+  const [pixelRatio, setPixelRatio] = React.useState<number>(getCappadPixelRatio());
   const [rotation, setRotation] = React.useState<PageRotation>(PageRotation.Rotate0);
   const [scale, setScale] = React.useState<number>(DEFAULT_ZOOM_SCALE);
   const [zoomIncrementValue, setZoomIncrementValue] = React.useState<number>(0.2);

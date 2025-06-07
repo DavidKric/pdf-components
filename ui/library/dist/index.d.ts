@@ -39,7 +39,6 @@ type Props$e = {
 declare const BoundingBox: React$1.FunctionComponent<Props$e>;
 
 declare const RENDER_TYPE: {
-    readonly MULTI_CANVAS: "multi-canvas";
     readonly SINGLE_CANVAS: "single-canvas";
 };
 type RenderType = typeof RENDER_TYPE[keyof typeof RENDER_TYPE];
@@ -393,7 +392,6 @@ declare const _default: {
     SidePanel: React$1.FunctionComponent<Props$3>;
     PercentFormatter: Intl.NumberFormat;
     RENDER_TYPE: {
-        readonly MULTI_CANVAS: "multi-canvas";
         readonly SINGLE_CANVAS: "single-canvas";
     };
     rotateClockwise: typeof rotateClockwise;
