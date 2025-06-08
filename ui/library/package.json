@@ -1,6 +1,6 @@
 {
   "name": "@davidkric/pdf-components",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "license": "Apache-2.0",
   "author": "david krichley",
   "main": "dist/index.cjs",
@@ -20,7 +20,7 @@
   },
   "scripts": {
     "clean": "rimraf dist",
-    "build": "npm run clean && tsup ./index.ts --dts --format esm,cjs --out-dir dist --external canvas && cp css/index.css dist/style.css",
+    "build": "npm run clean && tsup ./index.ts --dts --format esm,cjs --out-dir dist --external canvas && cp css/styles.css dist/style.css",
     "old_build": "tsc && webpack --mode production && cp package.publish.json dist/package.json && cd dist && npm pack",
     "lint": "eslint '**/*.{js,ts,tsx,json}' && echo '💫  Lint complete.'",
     "lint:fix": "eslint '**/*.{js,ts,tsx,json}' --fix && npx sort-package-json  && echo '🛠  Lint --fix complete'",

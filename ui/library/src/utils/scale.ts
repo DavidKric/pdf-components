@@ -6,14 +6,13 @@ export interface IPDFPageProxy {
   view: Array<number>; // format: [ top left x coordinate, top left y coordinate, bottom right x, bottom right y]
 }
 
-// We assume 96 DPI for display, but adjust for the current device's pixel ratio
-const DEFAULT_DPI = 96;
+// Standard DPI for web display - matches Semantic Reader's baseline
+const DISPLAY_DPI = 96;
 
 export function getDisplayDPI(): number {
-  if (typeof window !== 'undefined' && typeof window.devicePixelRatio === 'number') {
-    return DEFAULT_DPI * window.devicePixelRatio;
-  }
-  return DEFAULT_DPI;
+  // Return consistent 96 DPI to match Semantic Reader's behavior
+  // This prevents the devicePixelRatio from being applied twice
+  return DISPLAY_DPI;
 }
 
 // PDF units are in 1/72nds of an inch
@@ -22,7 +21,7 @@ const USER_UNIT_DENOMINATOR = 72;
 /**
  * Given a PDFPageProxy, calculates the screen pixel size of the PDF page at 100% scale
  * @param page The PDFPageProxy to calculate size for
- * @returns Pixel size of a page at 100% scale assuming 96DPI display
+ * @returns Pixel size of a page at 100% scale at 96 DPI (matching Semantic Reader)
  */
 export function computePageDimensions(page: IPDFPageProxy): Dimensions {
   const [leftPx, topPx, rightPx, bottomPx] = page.view;
