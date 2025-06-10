@@ -1,21 +1,8 @@
 'use client';
 
 import React from 'react';
+import PDFViewerDemoDoclingComponents from '../PDFViewerDemoDoclingComponents';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
-
-// Dynamically import the docling components demo to avoid SSR issues
-const PDFViewerDemoDoclingComponents = dynamic(
-  () => import('../PDFViewerDemoDoclingComponents'),
-  { 
-    ssr: false,
-    loading: () => (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600">Loading Docling Components...</div>
-      </div>
-    )
-  }
-);
 
 export default function DemoComponentsPage() {
   return (
@@ -26,7 +13,7 @@ export default function DemoComponentsPage() {
         </Link>
         <span className="font-bold text-sm">Docling Web Components Demo</span>
       </div>
-      <div className="pt-12">
+      <div>
         <PDFViewerDemoDoclingComponents />
       </div>
     </>

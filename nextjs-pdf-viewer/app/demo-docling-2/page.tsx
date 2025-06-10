@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import PDFViewerDemoWithDocling from '../demo/PDFViewerDemoWithDoclingFixed';
+import PDFViewerDemoWithDocling from '../PDFViewerDemoWithDocling';
 import Link from 'next/link';
 
 export default function DemoDoclingPage() {

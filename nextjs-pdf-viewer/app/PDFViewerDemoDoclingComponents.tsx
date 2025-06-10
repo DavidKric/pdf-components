@@ -1,349 +1,249 @@
-'use client';
-
 import React, { useEffect, useRef, useState } from 'react';
+import '@docling/docling-components';
 
-// **TypeScript note:** Declare custom element types for JSX to avoid TS errors
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'docling-img': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
-        pagenumbers?: boolean;
-        src?: any;
-        items?: any[];
-      };
-      'docling-tooltip': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-      // (We could include <docling-overlay> or others if used)
-    }
-  }
+// Define types for the Docling document structure (partial, for clarity)
+interface BoundingBox { l: number; t: number; r: number; b: number; }
+interface DoclingItem { 
+  label: string; 
+  content?: string; 
+  text?: string; 
+  bbox: BoundingBox; 
+  page_idx?: number; 
 }
+interface DoclingPage { width: number; height: number; items: DoclingItem[]; }
+interface DoclingDocument { pages: DoclingPage[]; pictures?: DoclingItem[]; tables?: DoclingItem[]; }
 
-const App: React.FC = () => {
-  // State for loaded Docling JSON document
-  const [docData, setDocData] = useState<any>(null);
-  // State for overlay layer toggles
-  const [overlays, setOverlays] = useState({
-    tokens: false,
-    lines: false,
-    paragraphs: false,
-    sectionHeaders: false,
-    titles: false,
-    captions: false,
-    footnotes: false
-  });
-  
-  // State to track if we're on client side and components are loaded
-  const [isClient, setIsClient] = useState(false);
-  const [componentsLoaded, setComponentsLoaded] = useState(false);
+// Component props: expect a DoclingDocument JSON and optional styling parameters
+interface PDFViewerDemoProps { doc: DoclingDocument; style?: React.CSSProperties; }
 
-  // Refs for the docling image component (for setting src, items, and controlling scroll)
-  const docImgRef = useRef<HTMLElement>(null);
+const PDFViewerDemoDoclingComponents: React.FC<PDFViewerDemoProps> = ({ doc, style }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLDivElement>(null);  // Type as HTMLDivElement because DoclingImg is a custom element
+  const [selectedText, setSelectedText] = useState<string>('');
+  const [selectedCoords, setSelectedCoords] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [highlights, setHighlights] = useState<Array<{
+    type: 'citation' | 'figure',
+    pageIndex: number,
+    top: number, left: number, width: number, height: number,
+    targetPageIndex?: number, targetY?: number
+  }>>([]);
+  const pageOffsetsRef = useRef<number[]>([]);  // cumulative offsets of each page for scrolling
+  const scaleRef = useRef<number>(1);
 
-  // We will collect special overlay items for citations and figure refs
-  const [citationOverlays, setCitationOverlays] = useState<any[]>([]);
-  const [figureOverlays, setFigureOverlays] = useState<any[]>([]);
-
-  // Set client side flag
+  // Compute page scale and offsets once doc is loaded
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    if (!doc || !doc.pages || doc.pages.length === 0 || !containerRef.current) return;
+    const containerWidth = containerRef.current.clientWidth;
+    const pageWidth = doc.pages[0].width || containerWidth;
+    const scale = containerWidth / pageWidth;
+    scaleRef.current = scale;
+    // Compute cumulative page height offsets (in original doc units)
+    const offsets: number[] = [];
+    let cumulative = 0;
+    doc.pages.forEach(page => {
+      offsets.push(cumulative);
+      cumulative += page.height;
+    });
+    pageOffsetsRef.current = offsets;
+  }, [doc]);
 
-  // Load docling components only on client side
+  // Set up always-on highlights for citations and figure references
   useEffect(() => {
-    if (!isClient) return;
-    
-    const loadComponents = async () => {
-      try {
-        // @ts-ignore - Dynamic import of untyped module
-        await import('@docling/docling-components');
-        setComponentsLoaded(true);
-      } catch (error) {
-        console.error('Failed to load docling components:', error);
-      }
-    };
-    
-    loadComponents();
-  }, [isClient]);
-
-  // Fetch the Docling JSON on mount
-  useEffect(() => {
-    const fetchDoc = async () => {
-      try {
-        const res = await fetch('/2408.09869v3.json');  // path to the Docling JSON
-        const json = await res.json();
-        setDocData(json);
-      } catch (err) {
-        console.error('Failed to load Docling JSON:', err);
-      }
-    };
-    fetchDoc();
-  }, []);
-
-  // After Docling JSON is loaded, assign it to the <docling-img> component
-  useEffect(() => {
-    if (docData && docImgRef.current) {
-      // Set the document data as the source for docling-img
-      (docImgRef.current as any).src = docData;
-      // Also prepare always-on citation/figure overlays
-      prepareInteractiveOverlays(docData);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [docData]);
-
-  // Prepare citation and figure reference overlay items from the doc content
-  const prepareInteractiveOverlays = (doc: any) => {
-    const citationItems: any[] = [];
-    const figureItems: any[] = [];
-
-    if (!doc) return;
-    // We will use paragraphs and section headers text to find references
-    const textItems: any[] = [];
-    if (doc.paragraphs) textItems.push(...doc.paragraphs);
-    if (doc.section_headers) textItems.push(...doc.section_headers);
-    if (doc.titles) textItems.push(...doc.titles);
-    // (Titles likely just one main title, included for completeness)
-
-    // Regex patterns for citations and figure refs:
-    const citationPattern = /\[\s*\d+([,\-\s]+\d+)*\]/g;  // matches "[1]", "[1, 2]", "[1-3]" etc.
-    const figurePattern = /\bFig(?:ure)?\.?\s+\d+/gi;      // matches "Figure 1", "Fig. 2", case-insensitive
-
-    textItems.forEach(item => {
-      const content: string = item.text || item.content || '';
-      if (!content) return;
-      // Go through all matches in this item's text
-      let match;
-      // Citations:
-      while ((match = citationPattern.exec(content)) !== null) {
-        const citeText = match[0];
-        const citeIndexStr = citeText.replace(/[\[\]\s]/g, '');  // e.g. "[12]" -> "12" or "[1,2]" -> "1,2"
-        // If multiple numbers (e.g. "1,2"), take the first for scroll (simple approach)
-        const citeNum = parseInt(citeIndexStr.split(/,|-/)[0], 10);
-        if (!isNaN(citeNum)) {
-          const overlayItem = createOverlayItemForSpan(item, match.index, match.index + citeText.length);
-          overlayItem.customType = 'citation';
-          overlayItem.refIndex = citeNum;  // reference number to scroll to
-          overlayItem.label = 'FOOTNOTE';  // label as footnote for styling (citation marker)
-          citationItems.push(overlayItem);
+    if (!doc || !doc.pages) return;
+    const newHighlights: typeof highlights = [];
+    const refItems: DoclingItem[] = [];   // bibliography reference items (label 'reference')
+    // Gather bibliography reference items (assuming label or content identification)
+    for (const page of doc.pages) {
+      for (const item of page.items || []) {
+        if (item.label === 'reference' || item.label === 'reference_entry') {
+          refItems.push({ ...item, page_idx: pageOffsetsRef.current.indexOf(pageOffsetsRef.current.find(off => off === undefined)!) }); 
+          // ^ above: find page index for this reference item (simplified: find this page's index)
         }
       }
-      // Figure references:
-      while ((match = figurePattern.exec(content)) !== null) {
-        const figRefText = match[0];  // e.g. "Figure 2"
-        // Extract the figure number from the matched text (last number in the string)
-        const numMatch = figRefText.match(/(\d+)(?!.*\d)/);
-        const figNum = numMatch ? parseInt(numMatch[1], 10) : NaN;
-        if (!isNaN(figNum)) {
-          const overlayItem = createOverlayItemForSpan(item, match.index, match.index + figRefText.length);
-          overlayItem.customType = 'figure';
-          overlayItem.figNumber = figNum;
-          overlayItem.label = 'TEXT';  // label as generic text highlight
-          figureItems.push(overlayItem);
+    }
+    // Iterate over all text items to find citations and figure refs
+    doc.pages.forEach((page, pIndex) => {
+      for (let i = 0; i < (page.items?.length || 0); i++) {
+        const item = page.items[i];
+        if (!item.content && !item.text) continue;
+        const text = item.content || item.text || '';
+        // Identify numeric citation like "[123]"
+        const citationMatch = text.match(/^\[(\d+)\]$/);
+        if (citationMatch) {
+          const citeNum = parseInt(citationMatch[1], 10);
+          // Calculate highlight box position
+          const { l, t, r, b } = item.bbox;
+          const highlight: any = {
+            type: 'citation',
+            pageIndex: pIndex,
+            left: l * scaleRef.current,
+            top: (pageOffsetsRef.current[pIndex] + t) * scaleRef.current,
+            width: (r - l) * scaleRef.current,
+            height: (b - t) * scaleRef.current
+          };
+          // Find target reference entry page (if exists)
+          const refItem = refItems.find(ref => {
+            // Check if reference item starts with the same number (e.g., "1." or "[1]")
+            const refText = ref.content || ref.text || '';
+            return refText.startsWith(citationMatch[1]);
+          });
+          if (refItem && typeof refItem.page_idx !== 'undefined') {
+            highlight.targetPageIndex = refItem.page_idx;
+            highlight.targetY = refItem.bbox.t;
+          }
+          newHighlights.push(highlight);
+        }
+        // Identify figure references like "Figure 3" or "Fig. 3"
+        const figMatch = text.match(/^Fig(?:ure)?\.?\s+(\d+)/i);
+        if (figMatch) {
+          const figNum = parseInt(figMatch[1], 10);
+          const { l, t, r, b } = item.bbox;
+          const highlight: any = {
+            type: 'figure',
+            pageIndex: pIndex,
+            left: l * scaleRef.current,
+            top: (pageOffsetsRef.current[pIndex] + t) * scaleRef.current,
+            width: (r - l) * scaleRef.current,
+            height: (b - t) * scaleRef.current
+          };
+          // Find target figure (picture) page via doc.pictures list if available
+          if (doc.pictures && figNum >= 1 && figNum <= doc.pictures.length) {
+            const picItem = doc.pictures[figNum - 1];
+            if (picItem && typeof picItem.page_idx !== 'undefined') {
+              highlight.targetPageIndex = picItem.page_idx;
+              highlight.targetY = picItem.bbox.t;
+            }
+          }
+          newHighlights.push(highlight);
         }
       }
     });
+    setHighlights(newHighlights);
+  }, [doc]);
 
-    setCitationOverlays(citationItems);
-    setFigureOverlays(figureItems);
-  };
-
-  // Helper: create an overlay item for a text span given the parent item and character indices
-  const createOverlayItemForSpan = (parentItem: any, charStart: number, charEnd: number) => {
-    // Determine which provenance segment covers the span (Docling items may have multiple prov entries for multiple lines)
-    let provEntry = null;
-    if (parentItem.prov) {
-      // Find prov entry whose charspan covers the start index
-      for (const prov of parentItem.prov) {
-        if (prov.charspan && prov.charspan.length === 2) {
-          const [start, end] = prov.charspan;
-          if (charStart >= start && charStart < end) {
-            provEntry = prov;
-            break;
-          }
-        }
-      }
-    }
-    // If we found the specific line (prov) containing the span, use its bounding box; otherwise default to parent's first prov
-    const targetProv = provEntry || (parentItem.prov ? parentItem.prov[0] : null);
-    // Create a shallow copy of the prov entry (to avoid mutating original)
-    const provCopy = targetProv ? { ...targetProv } : {};
-    // (For simplicity, we use the entire prov's bbox as the clickable region. 
-    // This covers the whole line containing the span. Precise word-level boxing can be added if needed.)
-    return { ...provCopy, prov: [provCopy] };
-  };
-
-  // When overlay toggles change, update the docling-img `items` property to show/hide layers
+  // Listen for text selection changes to update metadata panel
   useEffect(() => {
-    if (!docData || !docImgRef.current) return;
-    const itemsToShow: any[] = [];
-    const d = docData;
-    if (overlays.tokens && d.tokens) {
-      itemsToShow.push(...d.tokens);
-    }
-    if (overlays.lines && d.lines) {
-      itemsToShow.push(...d.lines);
-    }
-    if (overlays.paragraphs && d.paragraphs) {
-      itemsToShow.push(...d.paragraphs);
-    }
-    if (overlays.sectionHeaders && d.section_headers) {
-      itemsToShow.push(...d.section_headers);
-    }
-    if (overlays.titles) {
-      if (d.titles) itemsToShow.push(...d.titles);
-      if (d.title) itemsToShow.push(d.title);
-    }
-    if (overlays.captions && d.captions) {
-      itemsToShow.push(...d.captions);
-    }
-    if (overlays.footnotes && d.footnotes) {
-      itemsToShow.push(...d.footnotes);
-      if (d.references) {
-        itemsToShow.push(...d.references);  // include reference list entries as footnotes, if present
+    const handleSelectionChange = () => {
+      if (!containerRef.current) return;
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const range = sel.getRangeAt(0);
+      const selectedStr = sel.toString();
+      if (!selectedStr) {
+        // No text selected (selection cleared)
+        setSelectedText('');
+        setSelectedCoords(null);
+        return;
       }
-    }
-    // Always include citation and figure reference overlays (to keep them clickable at all times)
-    itemsToShow.push(...citationOverlays, ...figureOverlays);
-
-    // Update the docling-img component's items to highlight
-    (docImgRef.current as any).items = itemsToShow;
-  }, [overlays, docData, citationOverlays, figureOverlays]);
-
-  // Scroll to a given page number (1-indexed) within the docling-img content
-  const scrollToPage = (pageNum: number) => {
-    const cmp = docImgRef.current as HTMLElement;
-    if (!cmp) return;
-    // Try to find the page image element in shadow DOM
-    const shadow = (cmp.shadowRoot || cmp);
-    const pageImg = shadow.querySelector(`img[data-page-number="${pageNum}"]`) as HTMLElement;
-    if (pageImg) {
-      pageImg.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-      // Fallback: scroll roughly by page height if image not found
-      cmp.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  // Scroll to reference entry number `refIndex` (1-indexed)
-  const scrollToReference = (refIndex: number) => {
-    if (!docData || !docData.references) return;
-    const refItem = docData.references[refIndex - 1];
-    if (refItem && refItem.prov && refItem.prov[0]) {
-      const page = refItem.prov[0].page_no;
-      scrollToPage(page);
-      // (Optionally, one could highlight or flash the reference item here)
-    }
-  };
-
-  // Scroll to the figure with number `figNumber`
-  const scrollToFigure = (figNumber: number) => {
-    if (!docData) return;
-    // Find caption or picture containing "Figure figNumber"
-    let targetItem = null;
-    if (docData.captions) {
-      targetItem = docData.captions.find((cap: any) => {
-        const text: string = cap.text || cap.content || '';
-        return text.match(new RegExp(`Figure\\s+${figNumber}\\b`));
-      });
-    }
-    if (!targetItem && docData.pictures) {
-      // As a fallback, use picture by index (figNumber likely corresponds to index in pictures if in order)
-      targetItem = docData.pictures[figNumber - 1];
-    }
-    if (targetItem && targetItem.prov && targetItem.prov[0]) {
-      const page = targetItem.prov[0].page_no;
-      scrollToPage(page);
-    }
-  };
-
-  // Handle click events on highlighted overlays
-  useEffect(() => {
-    const cmp = docImgRef.current;
-    if (!cmp) return;
-    // Event handler for item clicks
-    const handleItemClick = (event: any) => {
-      const detail = event.detail;
-      if (!detail) return;
-      // The event detail may contain the clicked item or items
-      let clickedItem = detail.item || detail.items || detail;
-      // If an array of items is provided (detail.items), use the first item
-      if (Array.isArray(clickedItem)) {
-        clickedItem = clickedItem[0];
+      // Ensure the selection is within our viewer container
+      const anchNode = sel.anchorNode;
+      if (anchNode && containerRef.current.contains(anchNode instanceof Text ? anchNode.parentNode : anchNode)) {
+        // Compute bounding box of selection relative to container
+        const rect = range.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const x = rect.left - containerRect.left;
+        const y = rect.top - containerRect.top;
+        const w = rect.width;
+        const h = rect.height;
+        // Convert to document coordinates (unscaled, top-left origin)
+        const docX = scaleRef.current !== 0 ? (x / scaleRef.current) : x;
+        const docY = scaleRef.current !== 0 ? (y / scaleRef.current) : y;
+        const docW = scaleRef.current !== 0 ? (w / scaleRef.current) : w;
+        const docH = scaleRef.current !== 0 ? (h / scaleRef.current) : h;
+        setSelectedText(selectedStr);
+        setSelectedCoords({ x: parseFloat(docX.toFixed(2)), y: parseFloat(docY.toFixed(2)), w: parseFloat(docW.toFixed(2)), h: parseFloat(docH.toFixed(2)) });
       }
-      if (!clickedItem) return;
-      if (clickedItem.customType === 'citation') {
-        const refNum = clickedItem.refIndex;
-        scrollToReference(refNum);
-      } else if (clickedItem.customType === 'figure') {
-        const figNum = clickedItem.figNumber;
-        scrollToFigure(figNum);
-      }
-      // (No special action on clicking other overlays beyond these)
     };
-    // Listen for custom selection events from docling-img
-    cmp.addEventListener('item-click', handleItemClick as EventListener);
-    cmp.addEventListener('itemClick', handleItemClick as EventListener);
-    cmp.addEventListener('click', handleItemClick as EventListener);
-    return () => {
-      cmp.removeEventListener('item-click', handleItemClick as EventListener);
-      cmp.removeEventListener('itemClick', handleItemClick as EventListener);
-      cmp.removeEventListener('click', handleItemClick as EventListener);
-    };
-  }, [docImgRef, docData]);
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, []);
 
-  // Toggle handler for checkboxes
-  const onToggleChange = (layer: string) => {
-    setOverlays(prev => ({ ...prev, [layer]: !prev[layer as keyof typeof prev] }));
+  // Scroll to a specific page (and optional Y offset within page)
+  const scrollToPage = (pageIndex: number, yOffset: number = 0) => {
+    const container = containerRef.current;
+    if (!container || !doc.pages[pageIndex]) return;
+    const pageOffsetY = pageOffsetsRef.current[pageIndex] * scaleRef.current;
+    container.scrollTo({ top: pageOffsetY + yOffset * scaleRef.current, behavior: 'smooth' });
   };
 
-  // Early return for SSR
-  if (!isClient) {
-    return (
-      <div className="app-container">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-gray-600">Loading...</div>
-        </div>
-      </div>
-    );
-  }
+  // Click handler for citation/figure highlight overlays
+  const handleHighlightClick = (hl: typeof highlights[number]) => {
+    if (typeof hl.targetPageIndex !== 'undefined') {
+      scrollToPage(hl.targetPageIndex, hl.targetY || 0);
+    }
+  };
 
+  // Render the layout: sidebar, main viewer, metadata panel
   return (
-    <div className="app-container">
-      {/* Top toolbar with overlay toggles - positioned below the navbar */}
-      <div className="fixed top-12 left-0 right-0 h-12 bg-gray-800 text-gray-100 flex items-center px-4 z-40 shadow" style={{ top: '48px' }}>
-        <strong className="text-yellow-400 mr-4">Overlays:</strong>
-        {Object.keys(overlays).map(layer => (
-          <label key={layer} className="mr-3 flex items-center text-sm">
-            <input 
-              type="checkbox" 
-              className="mr-1"
-              checked={overlays[layer as keyof typeof overlays]} 
-              onChange={() => onToggleChange(layer)} 
-            />
-            <span>{layer.charAt(0).toUpperCase() + layer.slice(1)}</span>
-          </label>
+    <div style={{ display: 'flex', height: '100%', ...style }}>
+      {/* Thumbnail Sidebar */}
+      <div style={{ width: '120px', overflowY: 'auto', borderRight: '1px solid #ccc', padding: '4px' }}>
+        {doc.pages.map((page, idx) => {
+          // Use page image if available (assuming embedded base64 or URL in doc data), otherwise use DoclingImg snapshot
+          // For simplicity, we assume doc.pages[idx].image contains a data URL or image source.
+          const thumbSrc: string | undefined = (page as any).image;
+          return (
+            <div key={idx} style={{ marginBottom: '8px', cursor: 'pointer' }} onClick={() => scrollToPage(idx)}>
+              {thumbSrc ? (
+                <img src={thumbSrc} alt={`Page ${idx+1}`} style={{ width: '100%', border: '1px solid #999' }} />
+              ) : (
+                <div style={{ width: '100%', paddingTop: '150%', background: '#eee', border: '1px solid #999' }}>
+                  {/* Placeholder if no image available */}
+                  <span style={{ position: 'absolute', left: 4, top: 4 }}>Page {idx+1}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Main Document Viewer */}
+      <div ref={containerRef} style={{ position: 'relative', flex: 1, overflowY: 'auto', background: '#f9f9f9' }}>
+        {/* Docling image with overlay for actual PDF content */}
+        <docling-img ref={imgRef} src={doc} pagenumbers style={{ width: '100%', height: 'auto' }}>
+          <DoclingOverlay />
+        </docling-img>
+        {/* Always-on highlights overlay (absolute positioned boxes) */}
+        {highlights.map((hl, index) => (
+          <div
+            key={index}
+            onClick={() => handleHighlightClick(hl)}
+            style={{
+              position: 'absolute',
+              left: `${hl.left}px`,
+              top: `${hl.top}px`,
+              width: `${hl.width}px`,
+              height: `${hl.height}px`,
+              background: hl.type === 'citation' ? 'rgba(255, 240, 140, 0.5)' : 'rgba(140, 200, 255, 0.4)',
+              border: hl.type === 'citation' ? '1px solid gold' : '1px solid deepskyblue',
+              cursor: hl.targetPageIndex !== undefined ? 'pointer' : 'default',
+              pointerEvents: hl.targetPageIndex !== undefined ? 'auto' : 'none'
+            }}
+            title={hl.type === 'citation' ? 'Go to reference' : 'Go to figure'}
+          />
         ))}
       </div>
 
-      {/* Document viewer container - positioned below both navbars */}
-      <div className="doc-container" style={{ paddingTop: '96px' }}>
-        {/* Loading indicator for components or data */}
-        {(!componentsLoaded || !docData) && (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-lg text-gray-600">
-              {!componentsLoaded ? 'Loading Docling components...' : 'Loading document...'}
-            </div>
-          </div>
-        )}
-        
-        {/* Docling components - only render when everything is loaded */}
-        {componentsLoaded && docData && (
+      {/* Metadata Side Panel */}
+      <div style={{ width: '250px', overflowY: 'auto', borderLeft: '1px solid #ccc', padding: '8px' }}>
+        <h3 style={{ marginTop: 0 }}>Selection Info</h3>
+        {selectedText ? (
           <>
-            <docling-img ref={docImgRef} pagenumbers></docling-img>
-            <docling-tooltip></docling-tooltip>
+            <p><strong>Selected Text:</strong> <em>{selectedText}</em></p>
+            {selectedCoords && (
+              <p>
+                <strong>Coordinates:</strong><br/>
+                x = {selectedCoords.x}, y = {selectedCoords.y} <br/>
+                width = {selectedCoords.w}, height = {selectedCoords.h}
+              </p>
+            )}
           </>
+        ) : (
+          <p><em>No text selected</em></p>
         )}
       </div>
     </div>
   );
 };
 
-export default App;
+export default PDFViewerDemoDoclingComponents;

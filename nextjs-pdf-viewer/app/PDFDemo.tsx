@@ -47,12 +47,20 @@ interface FeatureToggles {
   noteTaking: boolean;
   skimming: boolean;
   rightSidebar: boolean;
+  tokens: boolean;
+  rows: boolean;
+  paragraphs: boolean;
+  sectionHeaders: boolean;
+  titles: boolean;
+  captions: boolean;
+  footnotes: boolean;
+  textLayer: boolean;
 }
 
 function TopBar({ toggles, setToggles }: { toggles: FeatureToggles; setToggles: React.Dispatch<React.SetStateAction<FeatureToggles>> }) {
   const { scale } = useContext(TransformContext);
   return (
-    <div className="flex flex-wrap items-center justify-between w-full bg-gray-900 text-white border-b px-6 py-2 shadow-sm fixed top-0 left-0 z-30 h-16 min-h-[56px]">
+    <div className="flex flex-wrap items-center justify-between w-full bg-gray-900 text-white border-b px-6 py-2 shadow-sm fixed top-12 left-0 z-30 h-16 min-h-[56px]">
       <div className="flex items-center gap-4 flex-wrap">
         <span className="font-bold text-lg text-yellow-400">Semantic Reader Demo</span>
         <button
@@ -112,9 +120,47 @@ function TopBar({ toggles, setToggles }: { toggles: FeatureToggles; setToggles: 
   );
 }
 
+function FeaturesBar({ toggles, setToggles }: { toggles: FeatureToggles & any; setToggles: React.Dispatch<React.SetStateAction<FeatureToggles & any>> }) {
+  const toggleFeature = (key: string) => {
+    setToggles((prev: any) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  return (
+    <div className="fixed top-28 left-0 right-0 h-12 bg-gray-800 text-gray-100 flex items-center px-4 z-40 shadow border-b border-gray-700">
+      <span className="font-bold text-sm text-yellow-400 mr-4">
+        Advanced Features
+      </span>
+      {(
+        [
+          ['tokens', 'Tokens'],
+          ['rows', 'Rows'],
+          ['paragraphs', 'Paragraphs'],
+          ['sectionHeaders', 'Section Headers'],
+          ['titles', 'Titles'],
+          ['captions', 'Captions'],
+          ['footnotes', 'Footnotes'],
+          ['textLayer', 'Text Layer'],
+        ] as const
+      ).map(([key, label]) => (
+        <button
+          key={key}
+          className={`${
+            toggles[key]
+              ? 'bg-gray-700 text-yellow-300'
+              : 'bg-gray-800 hover:bg-gray-700'
+          } px-2 py-1 mr-1 rounded text-xs`}
+          onClick={() => toggleFeature(key)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Sidebar({ toggles, setToggles, activeTab, setActiveTab }: { toggles: FeatureToggles; setToggles: React.Dispatch<React.SetStateAction<FeatureToggles>>; activeTab: string; setActiveTab: (tab: string) => void }) {
   return (
-    <div className="flex flex-col h-full w-72 bg-gray-900 text-white border-r shadow-lg pt-16 fixed left-0 top-0 z-20">
+    <div className="flex flex-col h-full w-72 bg-gray-900 text-white border-r shadow-lg pt-28 fixed left-0 top-0 z-20">
       <div className="flex flex-row w-full border-b border-gray-800">
         <button className={`flex-1 py-3 text-center font-semibold ${activeTab === 'thumbnails' ? 'bg-gray-800 text-yellow-300' : 'hover:bg-gray-800'}`} onClick={() => setActiveTab('thumbnails')}>Thumbnails</button>
         <button className={`flex-1 py-3 text-center font-semibold ${activeTab === 'toc' ? 'bg-gray-800 text-yellow-300' : 'hover:bg-gray-800'}`} onClick={() => setActiveTab('toc')}>Table Of Contents</button>
@@ -133,7 +179,7 @@ function Sidebar({ toggles, setToggles, activeTab, setActiveTab }: { toggles: Fe
 
 function RightSidebar({ toggles, onSkimClick, onCitationClick }: { toggles: FeatureToggles; onSkimClick: (h: any) => void; onCitationClick: (c: any) => void }) {
   return (
-    <div className="flex flex-col h-full w-80 bg-white border-l shadow-lg pt-16 fixed right-0 top-0 z-20">
+    <div className="flex flex-col h-full w-80 bg-white border-l shadow-lg pt-28 fixed right-0 top-0 z-20">
       <div className="flex flex-row w-full border-b border-gray-200">
         <div className="flex-1 py-3 text-center font-semibold text-blue-700 bg-blue-50">Skimming Highlights</div>
       </div>
@@ -161,7 +207,7 @@ function RightSidebar({ toggles, onSkimClick, onCitationClick }: { toggles: Feat
   );
 }
 
-function PDFMainArea({ toggles, scrollToBox }: { toggles: FeatureToggles; scrollToBox: any }) {
+function PDFMainArea({ toggles, scrollToBox }: { toggles: FeatureToggles & any; scrollToBox: any }) {
   const { numPages } = useContext(DocumentContext);
   const highlightBoxes = [
     { page: 3, top: 100, left: 100, width: 200, height: 30 },
@@ -212,7 +258,7 @@ function PDFMainArea({ toggles, scrollToBox }: { toggles: FeatureToggles; scroll
   }, [scrollToBox]);
 
   return (
-    <div className={`pdf-reader__container flex-1 h-full bg-gray-100 pt-16 overflow-y-auto relative ${toggles.thumbnails ? 'ml-72' : 'ml-0'} ${toggles.rightSidebar ? 'mr-80' : 'mr-0'}`}>
+    <div className={`pdf-reader__container flex-1 h-full bg-gray-100 pt-40 overflow-y-auto relative ${toggles.thumbnails ? 'ml-72' : 'ml-0'} ${toggles.rightSidebar ? 'mr-80' : 'mr-0'}`}>
       <DocumentWrapper file={PDF_URL} renderType={RENDER_TYPE.SINGLE_CANVAS}>
         <div className="pdf-reader__page-list">
           {Array.from({ length: numPages ?? 0 }).map((_, idx) => (
@@ -372,6 +418,14 @@ export default function PDFDemo() {
     noteTaking: false,
     skimming: true,
     rightSidebar: true,
+    tokens: false,
+    rows: false,
+    paragraphs: false,
+    sectionHeaders: false,
+    titles: false,
+    captions: false,
+    footnotes: false,
+    textLayer: false,
   });
   const [activeTab, setActiveTab] = useState('thumbnails');
   const [scrollToBox, setScrollToBox] = useState<any>(null);
@@ -385,13 +439,16 @@ export default function PDFDemo() {
         <div className="topbar-overlay fixed top-0 left-0 right-0 z-30">
           <TopBar toggles={featureToggles} setToggles={setFeatureToggles} />
         </div>
+        <div className="featuresbar-overlay fixed top-0 left-0 right-0 z-30">
+          <FeaturesBar toggles={featureToggles} setToggles={setFeatureToggles} />
+        </div>
         {featureToggles.thumbnails && (
-          <div className="sidebar-overlay left fixed top-14 left-0 bottom-0 w-72 z-20">
+          <div className="sidebar-overlay left fixed top-28 left-0 bottom-0 w-72 z-20">
             <Sidebar toggles={featureToggles} setToggles={setFeatureToggles} activeTab={activeTab} setActiveTab={setActiveTab} />
           </div>
         )}
         {featureToggles.rightSidebar && (
-          <div className="sidebar-overlay right fixed top-14 right-0 bottom-0 w-80 z-20">
+          <div className="sidebar-overlay right fixed top-28 right-0 bottom-0 w-80 z-20">
             <RightSidebar toggles={featureToggles} onSkimClick={h => setScrollToBox(h)} onCitationClick={c => setScrollToBox(c)} />
           </div>
         )}

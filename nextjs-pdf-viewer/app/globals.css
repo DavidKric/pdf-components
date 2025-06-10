@@ -154,3 +154,15 @@ docling-img::part(annotation-caption) {
   border: 2px solid rgba(0,150,150, 0.8);
   background-color: rgba(0,150,150, 0.15);
 }
+
+/* PaperMage highlight boxes */
+.reader__text-highlight__bbox {
+  position: absolute;
+  pointer-events: auto;
+}
+.reader__text-highlight__bbox_0 { background: rgba(255, 230, 0, 0.25); border: 1px solid #d4b300; }
+.reader__text-highlight__bbox_1 { background: rgba(0, 200, 255, 0.25); border: 1px solid #0090c0; }
+.reader__text-highlight__bbox_2 { background: rgba(255, 102, 102, 0.25); border: 1px solid #c22; }
+.reader__text-highlight__bbox_3 { background: rgba(102, 255, 153, 0.25); border: 1px solid #1a9; }
+.reader__text-highlight__bbox_4 { background: rgba(204, 153, 255, 0.25); border: 1px solid #8367e8; }
+.reader__text-highlight__bbox_5 { background: rgba(255, 178, 102, 0.25); border: 1px solid #e07a00; }
