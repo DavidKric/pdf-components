@@ -16,6 +16,7 @@ import rawJson from '../2408.09869v3.json';
 import Toolbar from './Toolbar';
 import OverlayRenderer from './OverlayRenderer';
 import InspectorSidebar from './InspectorSidebar';
+import { absoluteToRelativeBox } from './bboxUtils';
 
 interface SelectedEntity {
   type: string;
@@ -86,8 +87,12 @@ const PDFViewerDemoWithDocling: React.FC = () => {
     const pageHeights = Array.isArray(docData.pages)
       ? docData.pages.map((p: any) => p?.size?.height)
       : [];
+    const pageWidths = Array.isArray(docData.pages)
+      ? docData.pages.map((p: any) => p?.size?.width)
+      : [];
     const DEFAULT_PAGE_HEIGHT = pageHeights[0] ?? 792;
-    const POINT_TO_PIXEL = 96 / 72; // pdf points (1/72 in) to CSS px at 96 DPI
+    const DEFAULT_PAGE_WIDTH = pageWidths[0] ?? 612;
+    const POINT_TO_PIXEL = 1; // keep points for now since we move to relative, scaling not needed yet
     const tokenList: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }> = [];
     const lineList: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }> = [];
     const paragraphList: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }> = [];
@@ -128,6 +133,7 @@ const PDFViewerDemoWithDocling: React.FC = () => {
       const { t: pdfTop, b: pdfBottom, l: pdfLeft, r: pdfRight } = bbox;
       // Use page-specific height when flipping the vertical axis
       const pageHeight = pageHeights[pageIndex] ?? DEFAULT_PAGE_HEIGHT;
+      const pageWidth = pageWidths[pageIndex] ?? DEFAULT_PAGE_WIDTH;
       const elemHeight = pdfTop - pdfBottom;
       const elemWidth = pdfRight - pdfLeft;
       // Convert PDF coordinate (origin bottom-left) to CSS coordinate (origin top-left):
@@ -205,15 +211,18 @@ const PDFViewerDemoWithDocling: React.FC = () => {
             const { left: citeLeft, width: citeWidth } = computeSegmentPosition(lineStr, matchStart, matchEnd, scaledCiteBBox);
             // Use the first number in the bracket as the ref target (for simplicity)
             const targetNum = citeMatch[1].split(/[\-,]/)[0].trim();
-            citationLinkList.push({
-              page: pageIndex,
-              top: cssLineTop,
-              left: citeLeft,
-              width: citeWidth,
-              height: lineHeight,
-              refId: `ref-${targetNum}`,
-              text: matchText,
-            });
+            const relCiteBox = absoluteToRelativeBox(
+              {
+                page: pageIndex,
+                top: cssLineTop,
+                left: citeLeft,
+                width: citeWidth,
+                height: lineHeight,
+              },
+              pageWidth * POINT_TO_PIXEL,
+              pageHeight * POINT_TO_PIXEL
+            );
+            citationLinkList.push({ ...relCiteBox, refId: `ref-${targetNum}`, text: matchText });
           }
           // Find figure references like "Figure 3" (without trailing colon to exclude captions)
           const figPattern = /Figure\s+(\d+)(?!:)/g;
@@ -224,15 +233,18 @@ const PDFViewerDemoWithDocling: React.FC = () => {
             const matchEnd = matchStart + `Figure ${figNum}`.length;
             const scaledFigBBox = { l: pdfLeft * POINT_TO_PIXEL, r: pdfRight * POINT_TO_PIXEL, t: lineTopPDF * POINT_TO_PIXEL, b: (lineTopPDF - lineHeight) * POINT_TO_PIXEL };
             const { left: figLeft, width: figWidth } = computeSegmentPosition(lineStr, matchStart, matchEnd, scaledFigBBox);
-            figureLinkList.push({
-              page: pageIndex,
-              top: cssLineTop,
-              left: figLeft,
-              width: figWidth,
-              height: lineHeight,
-              figId: `fig-${figNum}`,
-              text: `Figure ${figNum}`,
-            });
+            const relFigRefBox = absoluteToRelativeBox(
+              {
+                page: pageIndex,
+                top: cssLineTop,
+                left: figLeft,
+                width: figWidth,
+                height: lineHeight,
+              },
+              pageWidth * POINT_TO_PIXEL,
+              pageHeight * POINT_TO_PIXEL
+            );
+            figureLinkList.push({ ...relFigRefBox, figId: `fig-${figNum}`, text: `Figure ${figNum}` });
           }
         });
       }
@@ -252,6 +264,7 @@ const PDFViewerDemoWithDocling: React.FC = () => {
               const refBBox = refTextItem.prov[0].bbox;
               const pageIndex = (refTextItem.prov[0].page_no || 1) - 1;
               const pageHeight = pageHeights[pageIndex] ?? DEFAULT_PAGE_HEIGHT;
+              const pageWidth = pageWidths[pageIndex] ?? DEFAULT_PAGE_WIDTH;
               const topPx = (pageHeight - refBBox.t) * POINT_TO_PIXEL;
               citationLinkList.push({
                 page: pageIndex,
@@ -273,6 +286,7 @@ const PDFViewerDemoWithDocling: React.FC = () => {
       const picBBox = pic.prov[0].bbox;
       const pageIndex = (pic.prov[0].page_no ?? 1) - 1;
       const pageHeight = pageHeights[pageIndex] ?? DEFAULT_PAGE_HEIGHT;
+      const pageWidth = pageWidths[pageIndex] ?? DEFAULT_PAGE_WIDTH;
 
       if (Array.isArray(pic.captions) && pic.captions.length > 0) {
         const [firstCaption] = pic.captions;  // safe: we just checked length
@@ -296,13 +310,16 @@ const PDFViewerDemoWithDocling: React.FC = () => {
         }
       }
       // Record picture highlight (full image bbox)
-      pictureList.push({
+      const absPicBox = {
         page: pageIndex,
         top: (pageHeight - picBBox.t) * POINT_TO_PIXEL,
         left: picBBox.l * POINT_TO_PIXEL,
         width: (picBBox.r - picBBox.l) * POINT_TO_PIXEL,
         height: (picBBox.t - picBBox.b) * POINT_TO_PIXEL,
-      });
+      };
+      pictureList.push(
+        absoluteToRelativeBox(absPicBox, pageWidth * POINT_TO_PIXEL, pageHeight * POINT_TO_PIXEL)
+      );
     });
 
     return {

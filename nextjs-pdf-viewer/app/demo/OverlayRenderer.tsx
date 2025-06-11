@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { DocumentContext, Overlay as PdfOverlay, scrollToId } from '@davidkric/pdf-components';
+import { relativeToAbsoluteBox } from './bboxUtils';
 import SelectionOverlay from './SelectionOverlay';
 
 // Cast Overlay so it will accept any React nodes instead of only <BoundingBox>
@@ -24,7 +25,7 @@ type Props = {
 };
 
 const OverlayRenderer: React.FC<Props> = (props) => {
-  const { numPages } = useContext(DocumentContext);
+  const { numPages, pageDimensions } = useContext(DocumentContext);
   const {
     toggles,
     tokenHighlights,
@@ -52,6 +53,10 @@ const OverlayRenderer: React.FC<Props> = (props) => {
     onEntitySelect({ type, label, content, page: page + 1, coords });  // use 1-indexed page in label for user-friendliness
   };
 
+  // Convert relative bbox to absolute based on current rendered page size
+  const toAbs = (rel: { left: number; top: number; width: number; height: number; page: number }) =>
+    relativeToAbsoluteBox(rel, pageDimensions.width, pageDimensions.height);
+
   // If onlyPage supplied, we limit to that single page; else render all pages
   const pageIndices = onlyPage !== undefined ? [onlyPage] : Array.from({ length: numPages }).map((_, i) => i);
 
@@ -61,15 +66,18 @@ const OverlayRenderer: React.FC<Props> = (props) => {
       {pageIndices.map((pageIndex) => (
         <Overlay key={pageIndex}>
           {/* Citation reference overlays (click to scroll to bibliography) */}
-          {citationLinks.filter(c => c.page === pageIndex && !c.isAnchor).map((c, i) => (
-            <div
-              key={`cite-${pageIndex}-${i}`}
-              onClick={() => scrollToId(c.refId)}
-              title={`Go to reference ${c.refId.replace('ref-', '')}`}
-              style={{ position: 'absolute', top: c.top, left: c.left, width: c.width, height: c.height }}
-              className="bg-blue-100 bg-opacity-25 cursor-pointer mix-blend-multiply"
-            />
-          ))}
+          {citationLinks.filter(c => c.page === pageIndex && !c.isAnchor).map((c, i) => {
+            const abs = toAbs(c);
+            return (
+              <div
+                key={`cite-${pageIndex}-${i}`}
+                onClick={() => scrollToId(c.refId)}
+                title={`Go to reference ${c.refId.replace('ref-', '')}`}
+                style={{ position: 'absolute', top: abs.top, left: abs.left, width: abs.width, height: abs.height }}
+                className="bg-blue-100 bg-opacity-25 cursor-pointer mix-blend-multiply"
+              />
+            );
+          })}
           {/* Citation anchors (targets for scrolling, not clickable) */}
           {citationLinks.filter(c => c.page === pageIndex && c.isAnchor).map((c, i) => (
             <div 
@@ -80,43 +88,55 @@ const OverlayRenderer: React.FC<Props> = (props) => {
           ))}
 
           {/* Figure reference overlays (click to scroll to figure) */}
-          {figureLinks.filter(f => f.page === pageIndex && !f.isAnchor).map((f, i) => (
-            <div
-              key={`fig-${pageIndex}-${i}`}
-              onClick={() => scrollToId(f.figId)}
-              title={`View Figure ${f.figId.replace('fig-', '')}`}
-              style={{ position: 'absolute', top: f.top, left: f.left, width: f.width, height: f.height }}
-              className="bg-purple-100 bg-opacity-30 cursor-pointer mix-blend-multiply"
-            />
-          ))}
+          {figureLinks.filter(f => f.page === pageIndex && !f.isAnchor).map((f, i) => {
+            const abs = toAbs(f);
+            return (
+              <div
+                key={`fig-${pageIndex}-${i}`}
+                onClick={() => scrollToId(f.figId)}
+                title={`View Figure ${f.figId.replace('fig-', '')}`}
+                style={{ position: 'absolute', top: abs.top, left: abs.left, width: abs.width, height: abs.height }}
+                className="bg-purple-100 bg-opacity-30 cursor-pointer mix-blend-multiply"
+              />
+            );
+          })}
           {/* Figure anchors (target positions for scrolling) – rendered only when Images overlay is enabled */}
-          {toggles.images && figureLinks.filter(f => f.page === pageIndex && f.isAnchor).map((f, i) => (
-            <div 
-              key={`figAnchor-${pageIndex}-${i}`} 
-              id={f.figId}
-              style={{ position: 'absolute', top: f.top, left: f.left, width: f.width, height: f.height, pointerEvents: 'none' }}
-              className="bg-purple-100 bg-opacity-15 border border-purple-500 mix-blend-multiply"
-            />
-          ))}
+          {toggles.images && figureLinks.filter(f => f.page === pageIndex && f.isAnchor).map((f, i) => {
+            const abs = toAbs(f);
+            return (
+              <div 
+                key={`figAnchor-${pageIndex}-${i}`} 
+                id={f.figId}
+                style={{ position: 'absolute', top: abs.top, left: abs.left, width: abs.width, height: abs.height, pointerEvents: 'none' }}
+                className="bg-purple-100 bg-opacity-15 mix-blend-multiply"
+              />
+            );
+          })}
 
           {/* Image / figure bounding boxes (blue outline) */}
-          {toggles.images && imageHighlights.filter(img => img.page === pageIndex).map((img, i) => (
-            <div
-              key={`img-${pageIndex}-${i}`}
-              style={{ position: 'absolute', top: img.top, left: img.left, width: img.width, height: img.height, pointerEvents: 'none' }}
-              className="bg-indigo-200 bg-opacity-10 border border-indigo-400 mix-blend-multiply"
-            />
-          ))}
+          {toggles.images && imageHighlights.filter(img => img.page === pageIndex).map((img, i) => {
+            const abs = toAbs(img);
+            return (
+              <div
+                key={`img-${pageIndex}-${i}`}
+                style={{ position: 'absolute', top: abs.top, left: abs.left, width: abs.width, height: abs.height, pointerEvents: 'none' }}
+                className="bg-indigo-200 bg-opacity-10 mix-blend-multiply"
+              />
+            );
+          })}
 
           {/* Token highlights (small green boxes for each word) */}
-          {toggles.tokens && tokenHighlights.filter(t => t.page === pageIndex).map((token, i) => (
-            <div 
-              key={`tok-${pageIndex}-${i}`}
-              onClick={() => selectTextEntity('token', 'Token', token.text, pageIndex, token)}
-              style={{ position: 'absolute', top: token.top, left: token.left, width: token.width, height: token.height }}
-              className="border border-green-500 bg-green-200 bg-opacity-10 cursor-pointer"
-            />
-          ))}
+          {toggles.tokens && tokenHighlights.filter(t => t.page === pageIndex).map((token, i) => {
+            const abs = toAbs(token);
+            return (
+              <div 
+                key={`tok-${pageIndex}-${i}`}
+                onClick={() => selectTextEntity('token', 'Token', token.text, pageIndex, abs)}
+                style={{ position: 'absolute', top: abs.top, left: abs.left, width: abs.width, height: abs.height }}
+                className="bg-green-200 bg-opacity-10 cursor-pointer mix-blend-multiply"
+              />
+            );
+          })}
 
           {/* Line highlights (orange translucent bars covering entire line) */}
           {toggles.lines && lineHighlights.filter(l => l.page === pageIndex).map((line, i) => (
