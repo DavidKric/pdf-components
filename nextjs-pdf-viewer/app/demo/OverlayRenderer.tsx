@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { DocumentContext, Overlay as PdfOverlay, scrollToId } from '@davidkric/pdf-components';
-import { relativeToAbsoluteBox } from './bboxUtils';
+import { TransformContext } from '@davidkric/pdf-components';
+import { relativeToAbsoluteBox, RelativeBBox } from './bboxUtils';
 import SelectionOverlay from './SelectionOverlay';
 
 // Cast Overlay so it will accept any React nodes instead of only <BoundingBox>
@@ -8,16 +9,16 @@ const Overlay = PdfOverlay as unknown as React.FC<{ children?: React.ReactNode }
 
 type Props = {
   toggles: { [key: string]: boolean };
-  tokenHighlights: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }>;
-  lineHighlights: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }>;
-  paragraphHighlights: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }>;
-  headerHighlights: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }>;
-  titleHighlights: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }>;
-  captionHighlights: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }>;
-  footnoteHighlights: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }>;
-  citationLinks: Array<{ page: number; top: number; left: number; width: number; height: number; refId: string; text: string; isAnchor?: boolean }>;
-  figureLinks: Array<{ page: number; top: number; left: number; width: number; height: number; figId: string; text: string; isAnchor?: boolean }>;
-  imageHighlights: Array<{ page: number; top: number; left: number; width: number; height: number }>;
+  tokenHighlights: Array<RelativeBBox & { text: string }>;
+  lineHighlights: Array<RelativeBBox & { text: string }>;
+  paragraphHighlights: Array<RelativeBBox & { text: string }>;
+  headerHighlights: Array<RelativeBBox & { text: string }>;
+  titleHighlights: Array<RelativeBBox & { text: string }>;
+  captionHighlights: Array<RelativeBBox & { text: string }>;
+  footnoteHighlights: Array<RelativeBBox & { text: string }>;
+  citationLinks: Array<RelativeBBox & { refId: string; text: string; isAnchor?: boolean }>;
+  figureLinks: Array<RelativeBBox & { figId: string; text: string; isAnchor?: boolean }>;
+  imageHighlights: Array<RelativeBBox>;
   selectionMode: boolean;
   onEntitySelect: (entity: { type: string; label: string; content?: string; page?: number; coords?: any } | null) => void;
   onRegionSelect: (entity: { type: string; label: string; content?: string; page?: number; coords?: any } | null) => void;
@@ -26,6 +27,17 @@ type Props = {
 
 const OverlayRenderer: React.FC<Props> = (props) => {
   const { numPages, pageDimensions } = useContext(DocumentContext);
+  const { scale } = useContext(TransformContext);
+  const renderedWidth = pageDimensions.width * scale;
+  const renderedHeight = pageDimensions.height * scale;
+
+  const toAbs = (box: RelativeBBox) => relativeToAbsoluteBox(box, renderedWidth, renderedHeight);
+
+  const styleFromRel = (b: RelativeBBox) => {
+    const { left, top, width, height } = toAbs(b);
+    return { left, top, width, height } as React.CSSProperties;
+  };
+
   const {
     toggles,
     tokenHighlights,
@@ -53,10 +65,6 @@ const OverlayRenderer: React.FC<Props> = (props) => {
     onEntitySelect({ type, label, content, page: page + 1, coords });  // use 1-indexed page in label for user-friendliness
   };
 
-  // Convert relative bbox to absolute based on current rendered page size
-  const toAbs = (rel: { left: number; top: number; width: number; height: number; page: number }) =>
-    relativeToAbsoluteBox(rel, pageDimensions.width, pageDimensions.height);
-
   // If onlyPage supplied, we limit to that single page; else render all pages
   const pageIndices = onlyPage !== undefined ? [onlyPage] : Array.from({ length: numPages }).map((_, i) => i);
 
@@ -66,84 +74,69 @@ const OverlayRenderer: React.FC<Props> = (props) => {
       {pageIndices.map((pageIndex) => (
         <Overlay key={pageIndex}>
           {/* Citation reference overlays (click to scroll to bibliography) */}
-          {citationLinks.filter(c => c.page === pageIndex && !c.isAnchor).map((c, i) => {
-            const abs = toAbs(c);
-            return (
-              <div
-                key={`cite-${pageIndex}-${i}`}
-                onClick={() => scrollToId(c.refId)}
-                title={`Go to reference ${c.refId.replace('ref-', '')}`}
-                style={{ position: 'absolute', top: abs.top, left: abs.left, width: abs.width, height: abs.height }}
-                className="bg-blue-100 bg-opacity-25 cursor-pointer mix-blend-multiply"
-              />
-            );
-          })}
+          {citationLinks.filter(c => c.page === pageIndex && !c.isAnchor).map((c, i) => (
+            <div
+              key={`cite-${pageIndex}-${i}`}
+              onClick={() => scrollToId(c.refId)}
+              title={`Go to reference ${c.refId.replace('ref-', '')}`}
+              style={{ position: 'absolute', ...styleFromRel(c) }}
+              className="bg-blue-100 bg-opacity-25 cursor-pointer mix-blend-multiply"
+            />
+          ))}
           {/* Citation anchors (targets for scrolling, not clickable) */}
           {citationLinks.filter(c => c.page === pageIndex && c.isAnchor).map((c, i) => (
             <div 
               key={`citeAnchor-${pageIndex}-${i}`} 
               id={c.refId}
-              style={{ position: 'absolute', top: c.top, left: c.left, width: c.width, height: c.height, pointerEvents: 'none' }} 
+              style={{ position: 'absolute', ...styleFromRel(c) }} 
             />
           ))}
 
           {/* Figure reference overlays (click to scroll to figure) */}
-          {figureLinks.filter(f => f.page === pageIndex && !f.isAnchor).map((f, i) => {
-            const abs = toAbs(f);
-            return (
-              <div
-                key={`fig-${pageIndex}-${i}`}
-                onClick={() => scrollToId(f.figId)}
-                title={`View Figure ${f.figId.replace('fig-', '')}`}
-                style={{ position: 'absolute', top: abs.top, left: abs.left, width: abs.width, height: abs.height }}
-                className="bg-purple-100 bg-opacity-30 cursor-pointer mix-blend-multiply"
-              />
-            );
-          })}
+          {figureLinks.filter(f => f.page === pageIndex && !f.isAnchor).map((f, i) => (
+            <div
+              key={`fig-${pageIndex}-${i}`}
+              onClick={() => scrollToId(f.figId)}
+              title={`View Figure ${f.figId.replace('fig-', '')}`}
+              style={{ position: 'absolute', ...styleFromRel(f) }}
+              className="bg-purple-100 bg-opacity-30 cursor-pointer mix-blend-multiply"
+            />
+          ))}
           {/* Figure anchors (target positions for scrolling) – rendered only when Images overlay is enabled */}
-          {toggles.images && figureLinks.filter(f => f.page === pageIndex && f.isAnchor).map((f, i) => {
-            const abs = toAbs(f);
-            return (
-              <div 
-                key={`figAnchor-${pageIndex}-${i}`} 
-                id={f.figId}
-                style={{ position: 'absolute', top: abs.top, left: abs.left, width: abs.width, height: abs.height, pointerEvents: 'none' }}
-                className="bg-purple-100 bg-opacity-15 mix-blend-multiply"
-              />
-            );
-          })}
+          {toggles.images && figureLinks.filter(f => f.page === pageIndex && f.isAnchor).map((f, i) => (
+            <div 
+              key={`figAnchor-${pageIndex}-${i}`} 
+              id={f.figId}
+              style={{ position: 'absolute', ...styleFromRel(f) }}
+              className="bg-purple-100 bg-opacity-15 border border-purple-500 mix-blend-multiply"
+            />
+          ))}
 
           {/* Image / figure bounding boxes (blue outline) */}
-          {toggles.images && imageHighlights.filter(img => img.page === pageIndex).map((img, i) => {
-            const abs = toAbs(img);
-            return (
-              <div
-                key={`img-${pageIndex}-${i}`}
-                style={{ position: 'absolute', top: abs.top, left: abs.left, width: abs.width, height: abs.height, pointerEvents: 'none' }}
-                className="bg-indigo-200 bg-opacity-10 mix-blend-multiply"
-              />
-            );
-          })}
+          {toggles.images && imageHighlights.filter(img => img.page === pageIndex).map((img, i) => (
+            <div
+              key={`img-${pageIndex}-${i}`}
+              style={{ position: 'absolute', ...styleFromRel(img) }}
+              className="bg-indigo-200 bg-opacity-10 border border-indigo-400 mix-blend-multiply"
+            />
+          ))}
 
           {/* Token highlights (small green boxes for each word) */}
-          {toggles.tokens && tokenHighlights.filter(t => t.page === pageIndex).map((token, i) => {
-            const abs = toAbs(token);
-            return (
-              <div 
-                key={`tok-${pageIndex}-${i}`}
-                onClick={() => selectTextEntity('token', 'Token', token.text, pageIndex, abs)}
-                style={{ position: 'absolute', top: abs.top, left: abs.left, width: abs.width, height: abs.height }}
-                className="bg-green-200 bg-opacity-10 cursor-pointer mix-blend-multiply"
-              />
-            );
-          })}
+          {toggles.tokens && tokenHighlights.filter(t => t.page === pageIndex).map((token, i) => (
+            <div 
+              key={`tok-${pageIndex}-${i}`}
+              onClick={() => selectTextEntity('token', 'Token', token.text, pageIndex, token)}
+              style={{ position: 'absolute', ...styleFromRel(token) }}
+              className="border border-green-500 bg-green-200 bg-opacity-10 cursor-pointer"
+            />
+          ))}
 
           {/* Line highlights (orange translucent bars covering entire line) */}
           {toggles.lines && lineHighlights.filter(l => l.page === pageIndex).map((line, i) => (
             <div 
               key={`line-${pageIndex}-${i}`}
               onClick={() => selectTextEntity('line', 'Line', line.text, pageIndex, line)}
-              style={{ position: 'absolute', top: line.top, left: line.left, width: line.width, height: line.height }}
+              style={{ position: 'absolute', ...styleFromRel(line) }}
               className="bg-orange-300 bg-opacity-20 cursor-pointer mix-blend-multiply"
             />
           ))}
@@ -153,7 +146,7 @@ const OverlayRenderer: React.FC<Props> = (props) => {
             <div 
               key={`para-${pageIndex}-${i}`}
               onClick={() => selectTextEntity('paragraph', 'Paragraph', para.text, pageIndex, para)}
-              style={{ position: 'absolute', top: para.top, left: para.left, width: para.width, height: para.height }}
+              style={{ position: 'absolute', ...styleFromRel(para) }}
               className="bg-yellow-300 bg-opacity-10 cursor-pointer mix-blend-multiply"
             />
           ))}
@@ -163,7 +156,7 @@ const OverlayRenderer: React.FC<Props> = (props) => {
             <div 
               key={`hdr-${pageIndex}-${i}`}
               onClick={() => selectTextEntity('sectionHeader', 'Section Header', hdr.text, pageIndex, hdr)}
-              style={{ position: 'absolute', top: hdr.top, left: hdr.left, width: hdr.width, height: hdr.height }}
+              style={{ position: 'absolute', ...styleFromRel(hdr) }}
               className="bg-red-200 bg-opacity-25 cursor-pointer mix-blend-multiply"
             />
           ))}
@@ -173,7 +166,7 @@ const OverlayRenderer: React.FC<Props> = (props) => {
             <div 
               key={`title-${pageIndex}-${i}`}
               onClick={() => selectTextEntity('title', 'Title', ttl.text, pageIndex, ttl)}
-              style={{ position: 'absolute', top: ttl.top, left: ttl.left, width: ttl.width, height: ttl.height }}
+              style={{ position: 'absolute', ...styleFromRel(ttl) }}
               className="bg-teal-200 bg-opacity-20 cursor-pointer mix-blend-multiply"
             />
           ))}
@@ -183,7 +176,7 @@ const OverlayRenderer: React.FC<Props> = (props) => {
             <div 
               key={`cap-${pageIndex}-${i}`}
               onClick={() => selectTextEntity('caption', 'Caption', cap.text, pageIndex, cap)}
-              style={{ position: 'absolute', top: cap.top, left: cap.left, width: cap.width, height: cap.height }}
+              style={{ position: 'absolute', ...styleFromRel(cap) }}
               className="bg-pink-200 bg-opacity-20 cursor-pointer mix-blend-multiply"
             />
           ))}
@@ -193,7 +186,7 @@ const OverlayRenderer: React.FC<Props> = (props) => {
             <div 
               key={`foot-${pageIndex}-${i}`}
               onClick={() => selectTextEntity('footnote', 'Footnote', ft.text, pageIndex, ft)}
-              style={{ position: 'absolute', top: ft.top, left: ft.left, width: ft.width, height: ft.height }}
+              style={{ position: 'absolute', ...styleFromRel(ft) }}
               className="bg-purple-300 bg-opacity-20 cursor-pointer mix-blend-multiply"
             />
           ))}
