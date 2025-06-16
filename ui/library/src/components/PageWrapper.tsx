@@ -66,11 +66,11 @@ export const PageWrapper: React.FunctionComponent<Props> = ({
 
   // Calculate the corrected scale for React-PDF to match Semantic Reader's behavior
   // The scale from TransformContext represents user zoom (1.0 = 100%)
-  // We need to adjust for the fact that our computePageDimensions already applies devicePixelRatio
-  // So we neutralize React-PDF's devicePixelRatio to prevent double scaling
+  // React-PDF will apply devicePixelRatio internally for sharp text rendering
+  // We use the base scale and let React-PDF handle devicePixelRatio scaling
   const getReactPdfScale = React.useCallback(() => {
-    // Use scale=1 as base since our pageDimensions already account for proper DPI
-    // This ensures that 100% user zoom displays at the intended size
+    // Use base scale - React-PDF will handle devicePixelRatio scaling internally
+    // This ensures overlays and React-PDF use the same coordinate system
     return scale;
   }, [scale]);
 
@@ -124,7 +124,8 @@ export const PageWrapper: React.FunctionComponent<Props> = ({
         pageIndex={pageIndex}
         scale={getReactPdfScale()}
         rotate={rotation}
-        devicePixelRatio={1}
+        devicePixelRatio={window.devicePixelRatio || 1}
+        renderTextLayer={true}
         renderAnnotationLayer={true}
         onGetTextSuccess={markPageAsLoaded}
       />

@@ -5,16 +5,29 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+  /* Constrain height to prevent infinite scrolling */
+  height: fit-content;
+  max-height: 100%;
+  overflow: visible; /* Allow pages to be visible but constrain container */
 }
 
-/* PDF Container - Prevent stacking context issues */
+/* PDF Container - Prevent stacking context issues and infinite expansion */
 .pdf-reader__container {
   position: static !important;
   z-index: auto !important;
   transform: none !important;
+  width: 100%;
+  max-width: 100%;
+  /* Constrain height to prevent infinite expansion */
+  height: fit-content;
+  max-height: 100%;
+  min-height: 0;
+  overflow: visible; /* Allow content to be visible but constrain container */
 }
 
-/* Base page styling */
+/* Base page styling with responsive scaling */
 .pdf-reader__page {
   background: #fff;
   margin: 24px auto;
@@ -23,6 +36,23 @@
   position: relative;
   max-width: 100%; /* Prevent overflow in container */
   width: auto !important; /* Allow responsive sizing */
+  height: auto !important; /* Maintain aspect ratio */
+  /* Improve background image sharpness */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Ensure the PDF document wrapper doesn't create infinite space */
+.pdf-reader__document-wrapper {
+  height: fit-content;
+  max-height: 100%;
+  overflow: visible;
+}
+
+/* Constrain React-PDF Document component */
+.react-pdf__Document {
+  height: fit-content !important;
+  max-height: 100% !important;
 }
 
 /* Overlay positioning and stacking */
@@ -122,18 +152,51 @@
   position: absolute;
   visibility: hidden;
 }
+
+/* Ensure React-PDF pages scale responsively */
 .react-pdf__Page {
-  height: 100%;
+  height: auto !important;
   max-width: 100% !important;
   width: auto !important;
 }
+
 .react-pdf__Page canvas {
   max-width: 100% !important;
   height: auto !important;
+  display: block;
+  /* Scale down canvas to account for devicePixelRatio increase */
+  transform-origin: top left;
+  /* Optimize for crisp text rendering - disable smoothing for documents */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  /* Improve text rendering quality */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Ensure crisp text rendering */
+  text-rendering: optimizeLegibility;
 }
-.react-pdf__Page__textContent > span {
-  height: 0em!important;
+
+/* Remove problematic canvas optimization */
+canvas {
+  /* Use crisp rendering for text documents */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
+
+/* Responsive scaling for different viewport sizes */
+@media (max-width: 1200px) {
+  .pdf-reader__page {
+    margin: 16px auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .pdf-reader__page {
+    margin: 12px auto;
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
 .pdf-reader__download-btn,
 .pdf-reader__print-btn {
   align-items: center;
@@ -296,4 +359,18 @@
   background-color: #ffffff;
   border: 1px solid #2E3743;
   border-radius: 3px;
+}
+
+/* Ensure text layer renders crisply with proper device pixel ratio */
+.react-pdf__Page__textContent {
+  /* Force hardware acceleration for text rendering */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  /* Improve text rendering sharpness */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Ensure text aligns with canvas properly */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }

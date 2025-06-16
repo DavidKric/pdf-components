@@ -1,11 +1,14 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { DocumentContext, Overlay as PdfOverlay, scrollToId } from '@davidkric/pdf-components';
 import { TransformContext } from '@davidkric/pdf-components';
 import { relativeToAbsoluteBox, RelativeBBox } from './bboxUtils';
 import SelectionOverlay from './SelectionOverlay';
+import './token-highlight.css';
 
 // Cast Overlay so it will accept any React nodes instead of only <BoundingBox>
 const Overlay = PdfOverlay as unknown as React.FC<{ children?: React.ReactNode }>;
+
+type Token = { left: number; top: number; width: number; height: number; page: number; text: string; id?: string | number };
 
 type Props = {
   toggles: { [key: string]: boolean };
@@ -26,10 +29,24 @@ type Props = {
 };
 
 const OverlayRenderer: React.FC<Props> = (props) => {
-  const { numPages, pageDimensions } = useContext(DocumentContext);
-  const { scale } = useContext(TransformContext);
+  const documentContext = React.useContext(DocumentContext as any) as any;
+  const transformContext = React.useContext(TransformContext as any) as any;
+  const numPages = documentContext.numPages;
+  const pageDimensions = documentContext.pageDimensions;
+  const scale = transformContext.scale;
+  const rotation = transformContext.rotation;
+  
+  if (!pageDimensions) {
+    return null;
+  }
+
+  // Use the same coordinate system as React-PDF and core library components
+  // React-PDF handles devicePixelRatio internally, so we only use base scale
   const renderedWidth = pageDimensions.width * scale;
   const renderedHeight = pageDimensions.height * scale;
+  
+  // State for selected tokens
+  const [selectedTokenIds, setSelectedTokenIds] = useState<Set<string>>(new Set());
 
   const toAbs = (box: RelativeBBox) => relativeToAbsoluteBox(box, renderedWidth, renderedHeight);
 
@@ -121,16 +138,6 @@ const OverlayRenderer: React.FC<Props> = (props) => {
             />
           ))}
 
-          {/* Token highlights (small green boxes for each word) */}
-          {toggles.tokens && tokenHighlights.filter(t => t.page === pageIndex).map((token, i) => (
-            <div 
-              key={`tok-${pageIndex}-${i}`}
-              onClick={() => selectTextEntity('token', 'Token', token.text, pageIndex, token)}
-              style={{ position: 'absolute', ...styleFromRel(token) }}
-              className="border border-green-500 bg-green-200 bg-opacity-10 cursor-pointer"
-            />
-          ))}
-
           {/* Line highlights (orange translucent bars covering entire line) */}
           {toggles.lines && lineHighlights.filter(l => l.page === pageIndex).map((line, i) => (
             <div 
@@ -190,56 +197,81 @@ const OverlayRenderer: React.FC<Props> = (props) => {
               className="bg-purple-300 bg-opacity-20 cursor-pointer mix-blend-multiply"
             />
           ))}
+          
+          {/* Token highlights (FIXED: using same coordinate system as other overlays) */}
+          {toggles.tokens && tokenHighlights.filter(t => t.page === pageIndex).map((token, i) => {
+            const tokenId = `tok-${pageIndex}-${i}`;
+            const isSelected = selectedTokenIds.has(tokenId);
+            return (
+              <div
+                key={tokenId}
+                className={`token-highlight clickable${isSelected ? ' selected' : ''}`}
+                style={{
+                  position: 'absolute',
+                  ...styleFromRel(token),
+                }}
+                onClick={() => {
+                  selectTextEntity('token', 'Token', token.text, pageIndex, token);
+                  // Toggle selection state
+                  setSelectedTokenIds(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(tokenId)) {
+                      newSet.delete(tokenId);
+                    } else {
+                      newSet.add(tokenId);
+                    }
+                    return newSet;
+                  });
+                }}
+              />
+            );
+          })}
 
           {/* Drag-to-select overlay (active when selectionMode is true) */}
           <SelectionOverlay 
             pageIndex={pageIndex} 
-            active={selectionMode} 
-            onSelect={(region) => {
-              if (region) {
-                // If a region was drawn, assemble the text content from tokens in that area
-                const { page, top, left, width, height } = region;
-                // Find all tokens fully inside the selection rectangle
-                const tokensInRegion = props.tokenHighlights.filter(tok => 
-                  tok.page === page &&
-                  tok.left >= left && tok.left + tok.width <= left + width &&
-                  tok.top >= top && tok.top + tok.height <= top + height
-                );
-                if (tokensInRegion.length > 0) {
-                  // Sort tokens by vertical position, then horizontal
-                  tokensInRegion.sort((a, b) => a.top === b.top ? a.left - b.left : a.top - b.top);
-                  // Join token texts, inserting line breaks when moving to a new line
-                  let assembledText = tokensInRegion[0].text;
-                  for (let t = 1; t < tokensInRegion.length; t++) {
-                    const prev = tokensInRegion[t-1];
-                    const curr = tokensInRegion[t];
-                    if (Math.abs(curr.top - prev.top) > prev.height * 0.5) {
-                      // Next token is on a new line (significant vertical gap)
-                      assembledText += '\n';
-                    } else {
-                      assembledText += ' ';
-                    }
-                    assembledText += curr.text;
+            active={selectionMode}
+            tokens={tokenHighlights.filter(t => t.page === pageIndex).map((token, i) => ({
+              ...token,
+              id: `tok-${pageIndex}-${i}`
+            }))}
+            onSelect={(selectedTokens) => {
+              if (selectedTokens && selectedTokens.length > 0) {
+                // Sort tokens by vertical position, then horizontal
+                selectedTokens.sort((a, b) => a.top === b.top ? a.left - b.left : a.top - b.top);
+                // Join token texts, inserting line breaks when moving to a new line
+                let assembledText = selectedTokens[0].text;
+                for (let t = 1; t < selectedTokens.length; t++) {
+                  const prev = selectedTokens[t-1];
+                  const curr = selectedTokens[t];
+                  if (Math.abs(curr.top - prev.top) > prev.height * 0.5) {
+                    // Next token is on a new line (significant vertical gap)
+                    assembledText += '\n';
+                  } else {
+                    assembledText += ' ';
                   }
-                  onRegionSelect({
-                    type: 'region',
-                    label: 'Selected Region',
-                    content: assembledText,
-                    page: page + 1,
-                    coords: { top, left, width, height },
-                  });
-                } else {
-                  // No text found in region
-                  onRegionSelect({
-                    type: 'region',
-                    label: 'Selected Region',
-                    content: '(No text in selection)',
-                    page: page + 1,
-                    coords: { top, left, width, height },
-                  });
+                  assembledText += curr.text;
                 }
+                
+                // Update selected token IDs
+                const tokenIds = selectedTokens.map(token => token.id?.toString() || '').filter(Boolean);
+                setSelectedTokenIds(new Set(tokenIds));
+                
+                onRegionSelect({
+                  type: 'region',
+                  label: 'Selected Tokens',
+                  content: assembledText,
+                  page: pageIndex + 1,
+                  coords: {
+                    top: Math.min(...selectedTokens.map(t => t.top)),
+                    left: Math.min(...selectedTokens.map(t => t.left)),
+                    width: Math.max(...selectedTokens.map(t => t.left + t.width)) - Math.min(...selectedTokens.map(t => t.left)),
+                    height: Math.max(...selectedTokens.map(t => t.top + t.height)) - Math.min(...selectedTokens.map(t => t.top)),
+                  },
+                });
               } else {
                 // Drag canceled or no selection
+                setSelectedTokenIds(new Set());
                 onRegionSelect(null);
               }
             }}

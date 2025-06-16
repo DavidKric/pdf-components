@@ -5,6 +5,7 @@ import {
   ContextProvider,
   DocumentWrapper,
   DocumentContext,
+  TransformContext,
   PageWrapper,
   RENDER_TYPE,
 } from '@davidkric/pdf-components';
@@ -65,7 +66,8 @@ async function extractTokenBBoxes(pdfDocument: any): Promise<Array<{ page: numbe
 
 // Component to extract tokens using DocumentContext
 const TokenExtractor: React.FC<{ onTokensExtracted: (tokens: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }>) => void }> = ({ onTokensExtracted }) => {
-  const { pdfDocProxy } = React.useContext(DocumentContext);
+  const documentContext = React.useContext(DocumentContext as any) as any;
+  const pdfDocProxy = documentContext.pdfDocProxy;
 
   useEffect(() => {
     const extractTokens = async () => {
@@ -120,7 +122,8 @@ const Pages: React.FC<{
   selectionMode,
   onEntitySelect,
 }) => {
-  const { numPages } = React.useContext(DocumentContext);
+  const documentContext = React.useContext(DocumentContext as any) as any;
+  const numPages = documentContext.numPages;
   if (!numPages || numPages <= 0) return null;
   
   return (
@@ -511,7 +514,7 @@ const PDFViewerDemoWithDocling: React.FC = () => {
         <div className="text-xs mt-1 bg-gray-100 p-1 rounded">
           Tokens: {extractedTokens.length}<br/>
           Paragraphs: {overlayData.paragraphHighlights.length}<br/>
-          Headers: {overlayData.headerHighlights.length}
+          Headers: {overlayData.headerHighlights.length}<br/>
         </div>
       </div>
 
@@ -528,39 +531,50 @@ const PDFViewerDemoWithDocling: React.FC = () => {
         )}
       </>
 
-      {/* Main content area: PDF viewer and optional inspector sidebar */}
-      <div className="pdf-viewer-container flex relative" style={{ marginTop: '96px' }}>
-        {/* PDF Document viewer with overlays */}
-        <DocumentWrapper 
-          className={selectedEntity ? "flex-1 pr-4" : "flex-1"} 
-          file={docData.origin?.uri ?? 'https://arxiv.org/pdf/2408.09869v3'} 
-          renderType={RENDER_TYPE.MULTI_CANVAS}
-        >
-          {/* Token extractor component */}
-          <TokenExtractor onTokensExtracted={handleTokensExtracted} />
-          
-          {/* Render pages */}
-          <Pages
-            toggles={toggles}
-            tokenHighlights={overlayData.tokenHighlights}
-            lineHighlights={overlayData.lineHighlights}
-            paragraphHighlights={overlayData.paragraphHighlights}
-            headerHighlights={overlayData.headerHighlights}
-            titleHighlights={overlayData.titleHighlights}
-            captionHighlights={overlayData.captionHighlights}
-            footnoteHighlights={overlayData.footnoteHighlights}
-            citationLinks={overlayData.citationLinks}
-            figureLinks={overlayData.figureLinks}
-            pictureHighlights={overlayData.pictureHighlights}
-            selectionMode={selectionMode}
-            onEntitySelect={handleEntitySelect}
-          />
-        </DocumentWrapper>
+      {/* Main responsive content area with proper layout */}
+      <div className="pdf-viewer-content-area with-toolbar" style={{ marginTop: '96px' }}>
+        {/* PDF Document viewer area */}
+        <div className="pdf-viewer-pdf-area" style={{ 
+          width: '100%', 
+          maxWidth: '100%',
+          overflow: 'auto',
+          display: 'flex',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <DocumentWrapper 
+            className="w-full max-w-full"
+            file={docData.origin?.uri ?? 'https://arxiv.org/pdf/2408.09869v3'} 
+            renderType={RENDER_TYPE.MULTI_CANVAS}
+          >
+            {/* Token extractor component */}
+            <TokenExtractor onTokensExtracted={handleTokensExtracted} />
+            
+            {/* Render pages */}
+            <Pages
+              toggles={toggles}
+              tokenHighlights={overlayData.tokenHighlights}
+              lineHighlights={overlayData.lineHighlights}
+              paragraphHighlights={overlayData.paragraphHighlights}
+              headerHighlights={overlayData.headerHighlights}
+              titleHighlights={overlayData.titleHighlights}
+              captionHighlights={overlayData.captionHighlights}
+              footnoteHighlights={overlayData.footnoteHighlights}
+              citationLinks={overlayData.citationLinks}
+              figureLinks={overlayData.figureLinks}
+              pictureHighlights={overlayData.pictureHighlights}
+              selectionMode={selectionMode}
+              onEntitySelect={handleEntitySelect}
+            />
+          </DocumentWrapper>
+        </div>
 
-        {/* Sidebar inspector, shows when an entity is selected */}
+        {/* Sidebar inspector area */}
         <>
           {selectedEntity && (
-            <InspectorSidebar entity={selectedEntity} onClose={() => setSelectedEntity(null)} />
+            <div className="pdf-viewer-sidebar">
+              <InspectorSidebar entity={selectedEntity} onClose={() => setSelectedEntity(null)} />
+            </div>
           )}
         </>
       </div>

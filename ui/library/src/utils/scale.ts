@@ -10,8 +10,8 @@ export interface IPDFPageProxy {
 const DISPLAY_DPI = 96;
 
 export function getDisplayDPI(): number {
-  // Return consistent 96 DPI to match Semantic Reader's behavior
-  // This prevents the devicePixelRatio from being applied twice
+  // Use base 96 DPI for consistent coordinate system
+  // devicePixelRatio scaling is handled by React-PDF and CSS
   return DISPLAY_DPI;
 }
 

@@ -35,6 +35,9 @@ body,
 body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 /* ---------- container around the whole document ------------------ */
@@ -51,7 +54,8 @@ body {
 /* Critical: Prevent Tailwind from shrinking PDF canvases or images */
 .pdf-reader__page canvas,
 .pdf-reader__page img {
-  max-width: none !important;  /* Allow canvas to render at true native width */
+  /* Allow React-PDF to control canvas sizing for proper devicePixelRatio handling */
+  max-width: 100% !important;  /* Responsive but allow React-PDF scaling */
   height: auto !important;     /* Maintain aspect ratio */
 }
 
@@ -60,13 +64,90 @@ body {
   min-width: 0 !important;
   min-height: 0 !important;
   margin-bottom: 0 !important; /* Remove any extra gap under pages */
-  width: auto !important;      /* Let PDF dictate natural width */
+  /* Allow React-PDF to control sizing for proper coordinate system */
+  width: auto !important;
+  height: auto !important;
 }
 
 /* Ensure overlays don't interfere with page interaction */
 .pdf-reader__overlay-bounding-box-underline,
 .pdf-reader__page-highlight-overlay {
   pointer-events: none !important;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Responsive PDF Layout Enhancements                               */
+/* ------------------------------------------------------------------ */
+
+/* Ensure the PDF viewer content area uses the new layout classes */
+.pdf-viewer-content-area {
+  display: flex;
+  flex-direction: row;
+  width: 100vw;
+  height: 100vh; /* Fixed height instead of min-height */
+  box-sizing: border-box;
+  overflow: hidden; /* Prevent content area from scrolling */
+}
+
+/* Content area with toolbar offset */
+.pdf-viewer-content-area.with-toolbar {
+  height: calc(100vh - 96px); /* Account for toolbar height */
+}
+
+.pdf-viewer-pdf-area {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: #222;
+  padding: 20px;
+  box-sizing: border-box;
+  height: 100%; /* Take full height of parent */
+  overflow-y: auto; /* Enable vertical scrolling within bounds */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+.pdf-viewer-sidebar {
+  width: 320px;
+  background: #fff;
+  box-shadow: -1px 0 8px rgba(0,0,0,0.04);
+  flex-shrink: 0;
+  height: 100%; /* Take full height of parent */
+  overflow-y: auto; /* Enable vertical scrolling within bounds */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .pdf-viewer-content-area {
+    flex-direction: column;
+    height: 100vh; /* Maintain viewport height constraint */
+  }
+  
+  .pdf-viewer-sidebar {
+    width: 100%;
+    max-height: 40vh;
+    flex-shrink: 0;
+  }
+  
+  .pdf-viewer-pdf-area {
+    padding: 10px;
+    flex: 1 1 auto;
+    height: auto; /* Allow flexible height in mobile */
+    min-height: 0; /* Prevent flex item from expanding */
+  }
+}
+
+/* Ensure PDF pages center properly and have proper spacing */
+.pdf-reader__page-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  gap: 20px;
+  padding: 20px 0; /* Add padding for better visual spacing */
+  /* Remove min-height to prevent infinite expansion */
 }
 
 /* ------------------------------------------------------------------ */

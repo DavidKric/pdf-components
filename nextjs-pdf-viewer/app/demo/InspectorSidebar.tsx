@@ -20,13 +20,10 @@ const InspectorSidebar: React.FC<SidebarProps> = ({ entity, onClose }) => {
   const { label, content, page, coords } = entity;
   return (
     <div 
-      className="w-80 max-w-xs bg-white border-l border-gray-300 shadow-lg p-4 text-sm overflow-y-auto"
+      className="bg-white border-l border-gray-300 shadow-lg p-4 text-sm overflow-y-auto h-full"
       style={{ 
         minHeight: '100vh',
         maxHeight: '100vh',
-        position: 'sticky',
-        top: 0,
-        right: 0
       }}
     >
       {/* Close button */}

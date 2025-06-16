@@ -136,6 +136,8 @@ export function usePageRenderContextProps({
         pdfDocProxy,
         pixelRatio,
         scale,
+        imageType: 'image/png',
+        imageQuality: 1.0,
         promiseTimestamp: flushTimestamp,
       });
       const renderState: RenderState = {
@@ -211,7 +213,8 @@ export function getPriorityQueue(visiblePages: number[], numPages: number): numb
 }
 
 // This boost causes the rendered image to be scaled up by this amount
-const SCALE_BOOST = 2;
+// Reduced from 2 to 1.5 to balance quality vs performance and reduce over-scaling blur
+const SCALE_BOOST = 1.5;
 
 // Generate an object url for a given page, rendered in a shared canvas
 async function buildPageObjectURL({
@@ -238,18 +241,44 @@ async function buildPageObjectURL({
       return promiseTimestamp; // flush stale promise
     }
     // Render page in a canvas
-    const viewport = pageProxy.getViewport({ scale: scale * pixelRatio * SCALE_BOOST });
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
+    // Use same coordinate system as overlays: scale * SCALE_BOOST only
+    // devicePixelRatio will be handled by the canvas sizing and React-PDF separately
+    const effectiveScale = scale * SCALE_BOOST;
+    const logicalViewport = pageProxy.getViewport({ scale: effectiveScale });
+    
+    // Canvas backing store size (actual pixels) - account for device pixel ratio for sharp rendering
+    canvas.width = Math.ceil(logicalViewport.width * pixelRatio);
+    canvas.height = Math.ceil(logicalViewport.height * pixelRatio);
+    
+    // Canvas display size (CSS pixels) - match the coordinate system expected by overlays
+    canvas.style.width = Math.ceil(logicalViewport.width) + 'px';
+    canvas.style.height = Math.ceil(logicalViewport.height) + 'px';
+    
     const canvasContext = canvas.getContext('2d');
+    
+    // Optimize canvas context for high-quality text rendering
+    if (canvasContext) {
+      // Scale the context to account for device pixel ratio for sharp rendering
+      canvasContext.scale(pixelRatio, pixelRatio);
+      
+      canvasContext.imageSmoothingEnabled = false; // Disable for crisp text
+      // For text documents, we want crisp edges not smooth interpolation
+      (canvasContext as any).mozImageSmoothingEnabled = false;
+      (canvasContext as any).webkitImageSmoothingEnabled = false;
+      (canvasContext as any).msImageSmoothingEnabled = false;
+    }
+    
+    // Ensure we have a valid 2D rendering context before attempting to render.
     if (!canvasContext) {
-      throw new Error('canvas was unable to get a context');
+      throw new Error('Unable to obtain 2D canvas context for page render.');
     }
 
     const renderTask = pageProxy.render({
       canvasContext,
-      viewport,
-      intent: 'print', // immediately render pages on inactive pages
+      viewport: logicalViewport,
+      intent: 'display',
+      annotationMode: 0,
+      background: 'white',
     });
     await renderTask.promise;
 

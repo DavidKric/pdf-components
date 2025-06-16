@@ -15,10 +15,12 @@ export interface ITransformContext {
   setZoomIncrementValue: (value: number) => void;
 }
 
-// Cap pixel ratio to prevent excessive scaling on high DPI displays
+// Allow higher pixel ratios for sharp rendering on high DPI displays
 const getCappadPixelRatio = () => {
   if (typeof window === 'undefined') return 1;
-  return Math.min(window.devicePixelRatio || 1, 1.5); // Cap at 1.5x for readability
+  // Remove the 1.5x cap to allow full devicePixelRatio for sharpness
+  // Modern displays (MacBook Retina, etc.) need 2x+ for optimal quality
+  return window.devicePixelRatio || 1;
 };
 
 export const TransformContext = React.createContext<ITransformContext>({

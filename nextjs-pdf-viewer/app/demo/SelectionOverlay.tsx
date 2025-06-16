@@ -2,16 +2,38 @@ import React, { useState, useEffect, useContext } from 'react';
 import { DocumentContext, TransformContext } from '@davidkric/pdf-components';
 
 type Coord = { page: number; top: number; left: number; width: number; height: number };
+type Token = { left: number; top: number; width: number; height: number; page: number; text: string; id?: string | number };
 
 type SelectionOverlayProps = {
   pageIndex: number;
   active: boolean;
-  onSelect: (region: Coord | null) => void;
+  onSelect: (tokens: Token[] | null) => void;
+  tokens: Token[];
 };
 
-const SelectionOverlay: React.FC<SelectionOverlayProps> = ({ pageIndex, active, onSelect }) => {
-  const { pageDimensions } = useContext(DocumentContext);
-  const { scale } = useContext(TransformContext);
+function rectsIntersect(a: Coord, b: Coord) {
+  return (
+    a.left < b.left + b.width &&
+    a.left + a.width > b.left &&
+    a.top < b.top + b.height &&
+    a.top + a.height > b.top
+  );
+}
+
+const SelectionOverlay: React.FC<SelectionOverlayProps> = ({ pageIndex, active, onSelect, tokens }) => {
+  const documentContext = React.useContext(DocumentContext as any) as any;
+  const transformContext = React.useContext(TransformContext as any) as any;
+  const { pageDimensions } = documentContext;
+  const { scale } = transformContext;
+  
+  if (!pageDimensions) {
+    return null;
+  }
+
+  // Use the same coordinate system as React-PDF and core library components
+  // React-PDF handles devicePixelRatio internally, so we only use base scale
+  const renderedWidth = pageDimensions.width * scale;
+  const renderedHeight = pageDimensions.height * scale;
   
   // Track drag start and current positions in pixels (relative to this overlay)
   const [startPosition, setStartPosition] = useState<{ x: number; y: number } | null>(null);
@@ -51,16 +73,21 @@ const SelectionOverlay: React.FC<SelectionOverlayProps> = ({ pageIndex, active, 
     const x = clientX - left;
     const y = clientY - top;
     
-    // Calculate the selection region in relative coordinates (0-1)
-    const region: Coord = {
-      page: pageIndex,
-      top: Math.min(startPosition.y, y) / (pageDimensions.height * scale),
-      left: Math.min(startPosition.x, x) / (pageDimensions.width * scale),
-      width: Math.abs(startPosition.x - x) / (pageDimensions.width * scale),
-      height: Math.abs(startPosition.y - y) / (pageDimensions.height * scale),
-    };
+    // Convert drag box from pixel to PDF-relative coordinates
+    const x1 = Math.min(startPosition.x, x) / renderedWidth;
+    const y1 = Math.min(startPosition.y, y) / renderedHeight;
+    const w = Math.abs(x - startPosition.x) / renderedWidth;
+    const h = Math.abs(y - startPosition.y) / renderedHeight;
+    const region: Coord = { page: pageIndex, left: x1, top: y1, width: w, height: h };
     
-    onSelect(region);
+    // Find intersecting tokens (must be on this page)
+    const selected = tokens.filter(
+      token =>
+        token.page === pageIndex &&
+        rectsIntersect(region, token)
+    );
+    
+    onSelect(selected);
     
     // Reset positions
     setStartPosition(null);
@@ -91,11 +118,12 @@ const SelectionOverlay: React.FC<SelectionOverlayProps> = ({ pageIndex, active, 
     position: 'absolute',
     top: 0,
     left: 0,
-    width: pageDimensions.width * scale,
-    height: pageDimensions.height * scale,
+    width: renderedWidth,
+    height: renderedHeight,
     cursor: active ? 'crosshair' : 'default',
     pointerEvents: active ? 'auto' : 'none',
     backgroundColor: active ? 'rgba(0, 0, 0, 0.02)' : 'transparent',
+    zIndex: 1000, // above text layer
   } : {};
 
   return (

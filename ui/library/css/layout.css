@@ -1,15 +1,94 @@
 /* File: ui/library/css/layout.css */
 
+/* Responsive outer container for PDF viewer */
+.pdf-viewer-outer-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100vw;
+  height: 100vh; /* Fixed height instead of min-height */
+  background: #222;
+  box-sizing: border-box;
+  overflow: hidden; /* Prevent outer container from scrolling */
+}
+
+/* Content area with sidebar support */
+.pdf-viewer-content-area {
+  display: flex;
+  flex-direction: row;
+  width: 100vw;
+  height: 100vh; /* Fixed height instead of min-height */
+  box-sizing: border-box;
+  overflow: hidden; /* Prevent content area from scrolling */
+}
+
+/* PDF area that adjusts when sidebar is present */
+.pdf-viewer-pdf-area {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: #222;
+  padding: 20px;
+  box-sizing: border-box;
+  height: 100%; /* Take full height of parent */
+  max-height: 100vh; /* Prevent expansion beyond viewport */
+  overflow-y: auto; /* Enable vertical scrolling within bounds */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+/* Sidebar area */
+.pdf-viewer-sidebar {
+  width: 320px;
+  background: #fff;
+  box-shadow: -1px 0 8px rgba(0,0,0,0.04);
+  flex-shrink: 0;
+  height: 100%; /* Take full height of parent */
+  overflow-y: auto; /* Enable vertical scrolling within bounds */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
 .pdf-reader__page-list {
-    display: flex;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  /* Constrain to prevent infinite expansion */
+  height: fit-content;
+  max-height: none; /* Allow natural height but constrain parent */
+}
+  
+/* Remove unwanted stacking context creation */
+.pdf-reader__container {
+  position: static !important;
+  z-index: auto !important;
+  transform: none !important;
+  width: 100%;
+  max-width: 100%;
+  /* Ensure container doesn't expand beyond bounds */
+}
+
+/* Responsive scaling for mobile */
+@media (max-width: 900px) {
+  .pdf-viewer-content-area {
     flex-direction: column;
-    align-items: center;
+    height: 100vh; /* Maintain viewport height constraint */
   }
   
-  /* Remove unwanted stacking context creation */
-  .pdf-reader__container {
-    position: static !important;
-    z-index: auto !important;
-    transform: none !important;
+  .pdf-viewer-sidebar {
+    width: 100%;
+    max-height: 40vh;
+    overflow-y: auto;
+    flex-shrink: 0;
   }
+  
+  .pdf-viewer-pdf-area {
+    padding: 10px;
+    flex: 1 1 auto;
+    height: auto; /* Allow flexible height in mobile */
+    min-height: 0; /* Prevent flex item from expanding */
+  }
+}
   

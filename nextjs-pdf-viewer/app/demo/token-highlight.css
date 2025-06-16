@@ -1,0 +1,26 @@
+.token-highlight {
+  position: absolute;
+  background: rgba(255, 255, 100, 0.4);   /* Soft yellow */
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 1200;  /* Must be higher than text layer */
+  mix-blend-mode: multiply;
+  transition: background 0.2s;
+}
+
+.token-highlight.selected {
+  background: rgba(16, 117, 255, 0.3);   /* Blue for selected tokens */
+}
+
+.token-highlight.clickable {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.token-highlight.clickable:hover {
+  background: rgba(255, 255, 100, 0.6);
+}
+
+.token-highlight.selected.clickable:hover {
+  background: rgba(16, 117, 255, 0.5);
+} 
