@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import PDFViewerDemoWithDocling from '../PDFViewerDemoWithDocling';
+import PDFViewerDemoWithDoclingFixed from '../demo/PDFViewerDemoWithDoclingFixed'; // Updated import path
 import Link from 'next/link';
 
 export default function DemoDoclingPage() {
@@ -11,11 +11,11 @@ export default function DemoDoclingPage() {
         <Link href="/" className="font-bold text-sm hover:text-green-200 mr-4">
           ← Home
         </Link>
-        <span className="font-bold text-sm">Docling Integration Demo</span>
+        <span className="font-bold text-sm">Docling Integration Demo (Fixed)</span> {/* Optional: Update title if needed */}
       </div>
       <div>
-        <PDFViewerDemoWithDocling />
+        <PDFViewerDemoWithDoclingFixed /> {/* Updated component */}
       </div>
     </>
   );
-} 
+}
