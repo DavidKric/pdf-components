@@ -32,6 +32,10 @@ const Toolbar: React.FC<ToggleProps> = ({ toggles, onToggle, selectionMode, onTo
         ['captions', 'Captions'],
         ['footnotes', 'Footnotes'],
         ['images', 'Images'],
+        ['tables', 'Tables'],
+        ['formulas', 'Formulas'],
+        ['codes', 'Codes'],
+        ['furniture', 'Furniture (Debug)'],
         // (You could add 'skimming' or other debug layers here as needed)
       ] as const).map(([key, label]) => (
         <button 
