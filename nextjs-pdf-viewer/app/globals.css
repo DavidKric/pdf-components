@@ -107,6 +107,14 @@ body {
   overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
+/* Styles for the DocumentWrapper component to ensure its height is content-based */
+.docling-document-wrapper {
+  display: block; /* Ensures it takes up the full width and height is determined by content */
+  width: 100%;
+  /* Explicitly avoid setting a percentage-based height or min-height,
+     so its height is determined by the sum of its children (the pages). */
+}
+
 .pdf-viewer-sidebar {
   width: 320px;
   background: #fff;

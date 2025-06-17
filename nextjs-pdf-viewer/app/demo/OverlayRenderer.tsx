@@ -25,6 +25,10 @@ type Props = {
   citationLinks: Array<RelativeBBox & { refId: string; text: string; isAnchor?: boolean }>;
   figureLinks: Array<RelativeBBox & { figId: string; text: string; isAnchor?: boolean }>;
   imageHighlights: Array<RelativeBBox>;
+  tableHighlights?: Array<RelativeBBox & { text: string }>;    // New
+  formulaHighlights?: Array<RelativeBBox & { text: string }>;  // New
+  codeHighlights?: Array<RelativeBBox & { text: string }>;     // New
+  furnitureHighlights?: Array<RelativeBBox & { text: string } desiringFocusRing>; // New
   selectionMode: boolean;
   onEntitySelect: (entity: { type: string; label: string; content?: string; page?: number; coords?: any } | null) => void;
   onRegionSelect: (entity: { type: string; label: string; content?: string; page?: number; coords?: any } | null) => void;
@@ -94,6 +98,10 @@ const OverlayRenderer: React.FC<Props> = (props) => {
     selectedEntity,
     bibliography,
     figureCaptions, // Added
+    tableHighlights = [],    // New with default
+    formulaHighlights = [],  // New with default
+    codeHighlights = [],     // New with default
+    furnitureHighlights = [], // New with default
   } = props;
 
   if (!numPages || numPages <= 0) return null;  // if PDF not yet loaded
@@ -353,6 +361,50 @@ const OverlayRenderer: React.FC<Props> = (props) => {
                   }
                 }}
               />
+
+              {/* Table highlights (Light Green) */}
+              {toggles.tables && tableHighlights.filter(tbl => tbl.page === pageIndex).map((tbl, i) => (
+                <div
+                  key={`table-${pageIndex}-${i}`}
+                  onClick={() => selectTextEntity('table', 'Table', tbl.text, pageIndex, tbl)}
+                  style={{ position: 'absolute', ...styleFromRel(tbl), backgroundColor: 'rgba(144, 238, 144, 0.3)', border: '1px solid lightgreen' }}
+                  className="cursor-pointer mix-blend-multiply hover:bg-opacity-50"
+                  title={tbl.text}
+                />
+              ))}
+
+              {/* Formula highlights (Light Sky Blue) */}
+              {toggles.formulas && formulaHighlights.filter(frm => frm.page === pageIndex).map((frm, i) => (
+                <div
+                  key={`formula-${pageIndex}-${i}`}
+                  onClick={() => selectTextEntity('formula', 'Formula', frm.text, pageIndex, frm)}
+                  style={{ position: 'absolute', ...styleFromRel(frm), backgroundColor: 'rgba(135, 206, 250, 0.3)', border: '1px solid lightskyblue' }}
+                  className="cursor-pointer mix-blend-multiply hover:bg-opacity-50"
+                  title={frm.text}
+                />
+              ))}
+
+              {/* Code highlights (Light Coral) */}
+              {toggles.codes && codeHighlights.filter(cd => cd.page === pageIndex).map((cd, i) => (
+                <div
+                  key={`code-${pageIndex}-${i}`}
+                  onClick={() => selectTextEntity('code', 'Code', cd.text, pageIndex, cd)}
+                  style={{ position: 'absolute', ...styleFromRel(cd), backgroundColor: 'rgba(240, 128, 128, 0.3)', border: '1px solid lightcoral' }}
+                  className="cursor-pointer mix-blend-multiply hover:bg-opacity-50"
+                  title={cd.text}
+                />
+              ))}
+
+              {/* Furniture highlights (Light Grey) */}
+              {toggles.furniture && furnitureHighlights.filter(furn => furn.page === pageIndex).map((furn, i) => (
+                <div
+                  key={`furniture-${pageIndex}-${i}`}
+                  onClick={() => selectTextEntity('furniture', 'Furniture', furn.text, pageIndex, furn)}
+                  style={{ position: 'absolute', ...styleFromRel(furn), backgroundColor: 'rgba(211, 211, 211, 0.3)', border: '1px solid lightgrey' }}
+                  className="cursor-pointer mix-blend-multiply hover:bg-opacity-50"
+                  title={furn.text}
+                />
+              ))}
             </>
           )}
           {/* Render Citation Popover if active for this page */}
@@ -377,4 +429,4 @@ const OverlayRenderer: React.FC<Props> = (props) => {
   );
 };
 
-export default OverlayRenderer;
+export default React.memo(OverlayRenderer);

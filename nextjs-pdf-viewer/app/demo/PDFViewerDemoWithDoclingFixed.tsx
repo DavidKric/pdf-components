@@ -43,7 +43,15 @@ async function extractTokenBBoxes(pdfDocument: any): Promise<Array<{ page: numbe
     const pageHeight = viewport.height;
 
     textContent.items.forEach((item: any) => {
-      if (item.str && item.str.trim()) {
+      // Explicitly check if item.str is null or undefined
+      if (typeof item.str === 'undefined' || item.str === null) {
+        console.warn('extractTokenBBoxes: item.str is undefined or null. Item structure:', JSON.stringify(item));
+        // Optionally, skip this item or handle as an error
+        return;
+      }
+
+      // Check if item.str is a string and then if it's non-empty after trimming
+      if (typeof item.str === 'string' && item.str.trim()) {
         // PDF.js uses a bottom-left origin; y increases up the page.
         // item.transform = [scaleX, skewX, skewY, scaleY, transX, transY]
         const [,, , , x, y] = item.transform;
@@ -57,7 +65,12 @@ async function extractTokenBBoxes(pdfDocument: any): Promise<Array<{ page: numbe
           height: item.height,
           page: pageNum - 1, // Convert to 0-indexed
         });
+      } else if (typeof item.str !== 'string') {
+        // Log if item.str is not a string (but not null/undefined, handled above)
+        console.warn('extractTokenBBoxes: item.str is not a string. Item structure:', JSON.stringify(item));
       }
+      // If item.str is an empty string or only whitespace, it's skipped by item.str.trim()
+      // This is likely desired behavior, so no explicit logging for that case unless specified.
     });
   }
   
@@ -178,6 +191,10 @@ const PDFViewerDemoWithDocling: React.FC = () => {
     captions: false,
     footnotes: false,
     images: false,
+    tables: false,
+    formulas: false,
+    codes: false,
+    furniture: false,
     // Additional overlays like skimming highlights can be added here if needed
   });
   // State for selection mode (drag-to-select tool)
@@ -278,6 +295,13 @@ const PDFViewerDemoWithDocling: React.FC = () => {
     const bibliography: { [refId: string]: string } = {}; // For citation popovers
     const figureCaptions: { [figId: string]: string } = {}; // For figure popovers
 
+    // New highlight lists
+    const tableHighlights: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }> = [];
+    const formulaHighlights: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }> = [];
+    const codeHighlights: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }> = [];
+    const furnitureHighlights: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }> = [];
+
+
     // Helper to compute token horizontal position/width within a line:
     const computeSegmentPosition = (lineText: string, segmentStartIdx: number, segmentEndIdx: number, lineBBox: { l: number; r: number; t: number; b: number }) => {
       // Remove spaces for length calculations (to distribute width proportional to characters)
@@ -295,208 +319,199 @@ const PDFViewerDemoWithDocling: React.FC = () => {
     };
 
     // Process Docling document for other overlays (paragraphs, headers, etc.) but not tokens
-    (docData.texts ?? []).forEach((item: any) => {
-      // Process any item that has a bbox and textual content – not only 'text' but also
-      // 'section_header', 'title', 'caption', 'footnote', etc.
-      // (We still skip non-textual items like drawings unless they have a label we care about.)
-      const allowedLabels = ['text', 'section_header', 'title', 'caption', 'footnote', 'list_item'];
-      if (!allowedLabels.includes(item.label)) return;
-      const { text: itemText, prov } = item;
-      if (!prov?.[0]?.bbox) return;  // skip if no bounding box
-      const bbox = prov[0].bbox;
-      const pageIndex = (prov[0].page_no || 1) - 1;  // Docling pages are 1-indexed
-      const { t: pdfTop, b: pdfBottom, l: pdfLeft, r: pdfRight } = bbox; // These are PDF coordinates (bottom-left origin)
+    // Generic BBox processing function
+    const processItemBBox = (item: any, itemTypeLabel: string) => {
+      if (!item.prov?.[0]?.bbox) return null;
+      const bbox = item.prov[0].bbox;
+      const pageIndex = (item.prov[0].page_no || 1) - 1;
+      const { t: pdfTop, b: pdfBottom, l: pdfLeft, r: pdfRight } = bbox;
 
-      // Use page-specific height and width for coordinate conversion.
-      // If not available (e.g. page data missing), use default.
       const pageHeight = pageHeights[pageIndex] ?? DEFAULT_PAGE_HEIGHT;
       const pageWidth = pageWidths[pageIndex] ?? DEFAULT_PAGE_WIDTH;
 
-      const elemHeight = pdfTop - pdfBottom; // Height in PDF units
-      const elemWidth = pdfRight - pdfLeft;   // Width in PDF units
+      const elemHeight = pdfTop - pdfBottom;
+      const elemWidth = pdfRight - pdfLeft;
 
-      // Convert to relative coordinates for the overlay (origin top-left).
-      // `topRel`: CSS `top` property, relative to page height.
-      // PDF y-coordinates increase from bottom to top. CSS y-coordinates (top) increase from top to bottom.
-      // So, `pageHeight - pdfTop` converts the PDF top y-coordinate to a CSS-style top offset from the page's top edge.
       const topRel = (pageHeight - pdfTop) / pageHeight;
-      // `leftRel`: CSS `left` property, relative to page width. PDF x-coordinates (left) are same direction as CSS.
       const leftRel = pdfLeft / pageWidth;
       const widthRel = elemWidth / pageWidth;
       const heightRel = elemHeight / pageHeight;
 
-      // Identify and record high-level elements by label:
-      if (item.label === 'text' && itemText) {
-        // Consider a 'text' item a paragraph if it's long (heuristic: >100 chars)
-        if (itemText.length > 100) {
-          paragraphList.push({ page: pageIndex, top: topRel, left: leftRel, width: widthRel, height: heightRel, text: itemText });
+      const highlightData = {
+        page: pageIndex,
+        top: topRel,
+        left: leftRel,
+        width: widthRel,
+        height: heightRel,
+        text: item.text || item.label || itemTypeLabel, // Use available text or label
+      };
+
+      // Furniture Check (assuming 'content_layer' property exists and "FURNITURE" is its string value)
+      // Docling core might use an enum like ContentLayer.FURNITURE, check actual value if possible.
+      if (item.content_layer === "FURNITURE") { // Replace "FURNITURE" with actual enum value if different
+        furnitureHighlights.push({ ...highlightData, text: `${itemTypeLabel} (Furniture)` });
+      }
+
+      return highlightData;
+    };
+
+    (docData.texts ?? []).forEach((item: any) => {
+      const highlightData = processItemBBox(item, item.label || 'text');
+      if (!highlightData) return;
+
+      const { text: itemText } = item; // item.text often holds the actual string content
+      const itemLabel = item.label || 'text'; // item.label holds the type like 'section_header'
+
+      // Existing logic for text types
+      const allowedLabels = ['text', 'section_header', 'title', 'caption', 'footnote', 'list_item'];
+      if (!allowedLabels.includes(itemLabel) && item.content_layer !== "FURNITURE") return; // Skip if not furniture and not an allowed text label
+
+      if (item.content_layer === "FURNITURE") {
+        // Already processed by generic furniture check in processItemBBox if furniture toggle is on
+        // No specific list for "text furniture", it goes into generic furnitureHighlights
+      } else {
+        // Identify and record high-level elements by label:
+        if (itemLabel === 'text' && itemText) {
+          if (itemText.length > 100) { // Heuristic for paragraph
+            paragraphList.push({ ...highlightData, text: itemText });
+          }
+        } else if (itemLabel === 'section_header' && itemText) {
+          headerList.push({ ...highlightData, text: itemText });
+        } else if (itemLabel === 'title' && itemText) {
+          titleList.push({ ...highlightData, text: itemText });
+        } else if (itemLabel === 'caption' && itemText) {
+          captionList.push({ ...highlightData, text: itemText });
+        } else if (itemLabel === 'footnote' && itemText) {
+          footnoteList.push({ ...highlightData, text: itemText });
         }
-      }
-      if (item.label === 'section_header' && itemText) {
-        headerList.push({ page: pageIndex, top: topRel, left: leftRel, width: widthRel, height: heightRel, text: itemText });
-      }
-      if (item.label === 'title' && itemText) {
-        titleList.push({ page: pageIndex, top: topRel, left: leftRel, width: widthRel, height: heightRel, text: itemText });
-      }
-      if (item.label === 'caption' && itemText) {
-        captionList.push({ page: pageIndex, top: topRel, left: leftRel, width: widthRel, height: heightRel, text: itemText });
-      }
-      if (item.label === 'footnote' && itemText) {
-        footnoteList.push({ page: pageIndex, top: topRel, left: leftRel, width: widthRel, height: heightRel, text: itemText });
-      }
 
-      // If the item has actual text content, further break it down into line overlays (but not tokens - we get those from PDF.js)
-      if (itemText) {
-        const lines = itemText.split('\n');
-        const lineHeightRel = lines.length > 1 ? heightRel / lines.length : heightRel;
-        lines.forEach((lineStr: string, lineIdx: number) => {
-          // Compute each line's bounding box (assuming equal line height for simplicity)
-          const lineTopPDF = pdfTop - lineIdx * elemHeight / lines.length;
-          const cssLineTopRel = topRel + lineIdx * lineHeightRel;
-          // Record line overlay
-          lineList.push({
-            page: pageIndex,
-            top: cssLineTopRel,
-            left: leftRel,
-            width: widthRel,
-            height: lineHeightRel,
-            text: lineStr,
+        // If the item has actual text content, further break it down into line overlays
+        if (itemText) {
+          const lines = itemText.split('\n');
+          const lineHeightRel = lines.length > 1 ? highlightData.height / lines.length : highlightData.height;
+          lines.forEach((lineStr: string, lineIdx: number) => {
+            const lineTopPDF = (pageHeights[highlightData.page] ?? DEFAULT_PAGE_HEIGHT) * (1 - highlightData.top) - lineIdx * (pageHeights[highlightData.page] ?? DEFAULT_PAGE_HEIGHT) * lineHeightRel; // Approximate
+            const cssLineTopRel = highlightData.top + lineIdx * lineHeightRel;
+            lineList.push({
+              page: highlightData.page,
+              top: cssLineTopRel,
+              left: highlightData.left,
+              width: highlightData.width,
+              height: lineHeightRel,
+              text: lineStr,
+            });
+
+            const citationPattern = /\[(\d+(?:[\-,]\s*\d+)*)\]/g;
+            let citeMatch: RegExpExecArray | null;
+            while ((citeMatch = citationPattern.exec(lineStr)) !== null) {
+              const matchText = citeMatch[0];
+              const matchStart = citeMatch.index;
+              const matchEnd = matchStart + matchText.length;
+              const { bbox: provBBox } = item.prov[0];
+              const scaledCiteBBox = { l: provBBox.l * POINT_TO_PIXEL, r: provBBox.r * POINT_TO_PIXEL, t: lineTopPDF * POINT_TO_PIXEL, b: (lineTopPDF - (pageHeights[highlightData.page] ?? DEFAULT_PAGE_HEIGHT) * lineHeightRel) * POINT_TO_PIXEL };
+              const { left: citeLeft, width: citeWidth } = computeSegmentPosition(lineStr, matchStart, matchEnd, scaledCiteBBox);
+              const targetNum = citeMatch[1].split(/[\-,]/)[0].trim();
+              citationLinkList.push({
+                page: highlightData.page, top: cssLineTopRel, left: citeLeft, width: citeWidth, height: lineHeightRel, refId: `ref-${targetNum}`, text: matchText,
+              });
+            }
+            const figPattern = /Figure\s+(\d+)(?!:)/g;
+            let figMatch: RegExpExecArray | null;
+            while ((figMatch = figPattern.exec(lineStr)) !== null) {
+              const figNum = figMatch[1];
+              const matchStart = figMatch.index;
+              const matchEnd = matchStart + `Figure ${figNum}`.length;
+              const { bbox: provBBox } = item.prov[0];
+              const scaledFigBBox = { l: provBBox.l * POINT_TO_PIXEL, r: provBBox.r * POINT_TO_PIXEL, t: lineTopPDF * POINT_TO_PIXEL, b: (lineTopPDF - (pageHeights[highlightData.page] ?? DEFAULT_PAGE_HEIGHT) * lineHeightRel) * POINT_TO_PIXEL };
+              const { left: figLeft, width: figWidth } = computeSegmentPosition(lineStr, matchStart, matchEnd, scaledFigBBox);
+              figureLinkList.push({
+                page: highlightData.page, top: cssLineTopRel, left: figLeft, width: figWidth, height: lineHeightRel, figId: `fig-${figNum}`, text: `Figure ${figNum}`,
+              });
+            }
           });
-
-          // Find citation references like "[12]" in the line
-          const citationPattern = /\[(\d+(?:[\-,]\s*\d+)*)\]/g;
-          let citeMatch: RegExpExecArray | null;
-          while ((citeMatch = citationPattern.exec(lineStr)) !== null) {
-            const matchText = citeMatch[0];            // e.g., "[12]" or "[1-3]"
-            const matchStart = citeMatch.index;
-            const matchEnd = matchStart + matchText.length;
-            const scaledCiteBBox = { l: pdfLeft * POINT_TO_PIXEL, r: pdfRight * POINT_TO_PIXEL, t: lineTopPDF * POINT_TO_PIXEL, b: (lineTopPDF - elemHeight) * POINT_TO_PIXEL };
-            const { left: citeLeft, width: citeWidth } = computeSegmentPosition(lineStr, matchStart, matchEnd, scaledCiteBBox);
-            // Use the first number in the bracket as the ref target (for simplicity)
-            const targetNum = citeMatch[1].split(/[\-,]/)[0].trim();
-            citationLinkList.push({
-              page: pageIndex,
-              top: cssLineTopRel,
-              left: citeLeft,
-              width: citeWidth,
-              height: lineHeightRel,
-              refId: `ref-${targetNum}`,
-              text: matchText,
-            });
-          }
-          // Find figure references like "Figure 3" (without trailing colon to exclude captions)
-          const figPattern = /Figure\s+(\d+)(?!:)/g;
-          let figMatch: RegExpExecArray | null;
-          while ((figMatch = figPattern.exec(lineStr)) !== null) {
-            const figNum = figMatch[1];
-            const matchStart = figMatch.index;
-            const matchEnd = matchStart + `Figure ${figNum}`.length;
-            const scaledFigBBox = { l: pdfLeft * POINT_TO_PIXEL, r: pdfRight * POINT_TO_PIXEL, t: lineTopPDF * POINT_TO_PIXEL, b: (lineTopPDF - elemHeight) * POINT_TO_PIXEL };
-            const { left: figLeft, width: figWidth } = computeSegmentPosition(lineStr, matchStart, matchEnd, scaledFigBBox);
-            figureLinkList.push({
-              page: pageIndex,
-              top: cssLineTopRel,
-              left: figLeft,
-              width: figWidth,
-              height: lineHeightRel,
-              figId: `fig-${figNum}`,
-              text: `Figure ${figNum}`,
-            });
-          }
-        });
+        }
       }
     });
 
-    // Process groups and pictures to mark reference list items (anchors for citations) and figures:
     (docData.groups ?? []).forEach((group: GroupItem) => {
-      // Identify reference list entries (e.g., bibliography items) – label might be "list" of references
+      const highlightData = processItemBBox(group, group.label || 'group');
+      // Logic for specific group types like lists for bibliography can remain
       if ((group.label === 'list' || group.label === 'ordered_list') && group.parent?.$ref === '#/body') {
         group.children?.forEach((refChild: RefItem) => {
           const refTextItem = docData.texts?.find(t => t.self_ref === refChild.$ref);
           if (refTextItem?.orig?.startsWith('[') && refTextItem.prov?.[0]?.bbox) {
-            // This text item is a reference list entry starting with "[n]"
             const match = refTextItem.orig.match(/^\[(\d+)\]/);
             if (match) {
               const refNum = match[1];
               const refBBox = refTextItem.prov[0].bbox;
               const pageIndex = (refTextItem.prov[0].page_no || 1) - 1;
               const pageHeight = pageHeights[pageIndex] ?? DEFAULT_PAGE_HEIGHT;
-              const topPx = (pageHeight - refBBox.t) * POINT_TO_PIXEL;
+              const topPx = (pageHeight - refBBox.t) * POINT_TO_PIXEL; // This is absolute, might need adjustment if used for relative overlay
               const refId = `ref-${refNum}`;
               citationLinkList.push({
-                page: pageIndex,
-                top: topPx,
-                left: refBBox.l * POINT_TO_PIXEL,
-                width: 1, // Small bbox for anchor
-                height: 1, // Small bbox for anchor
-                refId: refId,
-                text: `[${refNum}]`,
-                isAnchor: true,  // mark as anchor target (not clickable)
+                page: pageIndex, top: topPx / pageHeight, left: (refBBox.l * POINT_TO_PIXEL) / (pageWidths[pageIndex] ?? DEFAULT_PAGE_WIDTH), width: 1 / (pageWidths[pageIndex] ?? DEFAULT_PAGE_WIDTH), height: 1 / pageHeight, refId: refId, text: `[${refNum}]`, isAnchor: true,
               });
-              // Store full reference text
               const fullRefText = refTextItem.orig.substring(match[0].length).trim();
               bibliography[refId] = fullRefText;
             }
           }
         });
+      } else if (highlightData && group.content_layer !== "FURNITURE") { // Generic group, not furniture
+        // Could add to a genericGroupHighlights if needed, or handle specific group types
       }
     });
+
     (docData.pictures ?? []).forEach((pic: PictureItem) => {
-      if (!pic.prov?.[0]?.bbox) return;
-      const picBBox = pic.prov[0].bbox;
-      const pageIndex = (pic.prov[0].page_no ?? 1) - 1;
-      const pageHeight = pageHeights[pageIndex] ?? DEFAULT_PAGE_HEIGHT;
-      const pdfPageWidth = pageWidths[pageIndex] ?? DEFAULT_PAGE_WIDTH;
+      const highlightData = processItemBBox(pic, 'picture');
+      if (!highlightData) return;
 
-      if (Array.isArray(pic.captions) && pic.captions.length > 0) {
-        const [firstCaption] = pic.captions;  // safe: we just checked length
-        const captionTextItem = docData.texts?.find(
-          t => t.self_ref === firstCaption.$ref
-        );
-        const capText = captionTextItem?.orig ?? '';
-        const match = capText.match(/^Figure\s+(\d+)/);
-        if (match) {
-          const figNum = match[1];
-          const figId = `fig-${figNum}`;
-          figureCaptions[figId] = capText; // Store full caption text
+      if (pic.content_layer !== "FURNITURE") {
+        pictureList.push(highlightData); // Add to main picture list if not furniture
 
-          const picTopRel = (pageHeight - picBBox.t) / pageHeight;
-          const picLeftRel = picBBox.l / pdfPageWidth;
-          const picWidthRel = (picBBox.r - picBBox.l) / pdfPageWidth;
-          const picHeightRel = (picBBox.t - picBBox.b) / pageHeight;
-          figureLinkList.push({
-            page: pageIndex,
-            top: picTopRel,
-            left: picLeftRel,
-            width: picWidthRel,
-            height: picHeightRel,
-            figId: figId, // Use consistent figId
-            text: `Figure ${figNum}`,
-            isAnchor: true,
-          });
-          // image highlight rectangle
-          pictureList.push({
-            page: pageIndex,
-            top: picTopRel,
-            left: picLeftRel,
-            width: picWidthRel,
-            height: picHeightRel,
-          });
+        if (Array.isArray(pic.captions) && pic.captions.length > 0) {
+          const [firstCaption] = pic.captions;
+          const captionTextItem = docData.texts?.find(t => t.self_ref === firstCaption.$ref);
+          const capText = captionTextItem?.orig ?? '';
+          const match = capText.match(/^Figure\s+(\d+)/);
+          if (match) {
+            const figNum = match[1];
+            const figId = `fig-${figNum}`;
+            figureCaptions[figId] = capText;
+            figureLinkList.push({ ...highlightData, figId: figId, text: `Figure ${figNum}`, isAnchor: true });
+          }
         }
       }
-      // Record picture highlight (full image bbox)
-      const picTopRel = (pageHeight - picBBox.t) / pageHeight;
-      const picLeftRel = picBBox.l / pdfPageWidth;
-      const picWidthRel = (picBBox.r - picBBox.l) / pdfPageWidth;
-      const picHeightRel = (picBBox.t - picBBox.b) / pageHeight;
-      pictureList.push({
-        page: pageIndex,
-        top: picTopRel,
-        left: picLeftRel,
-        width: picWidthRel,
-        height: picHeightRel,
-      });
     });
+
+    // Process Tables
+    (docData.tables ?? []).forEach((table) => {
+      const highlightData = processItemBBox(table, 'Table');
+      if (highlightData && table.content_layer !== "FURNITURE") {
+        tableHighlights.push(highlightData);
+      }
+    });
+
+    // Process Formulas
+    (docData.formulas ?? []).forEach((formula) => {
+      const highlightData = processItemBBox(formula, 'Formula');
+      if (highlightData && formula.content_layer !== "FURNITURE") {
+        formulaHighlights.push(highlightData);
+      }
+    });
+
+    // Process Codes
+    (docData.codes ?? []).forEach((code) => {
+      const highlightData = processItemBBox(code, 'Code');
+      if (highlightData && code.content_layer !== "FURNITURE") {
+        codeHighlights.push(highlightData);
+      }
+    });
+
+    // Note: KeyValueItem and FormItem processing would follow the same pattern if they exist in docData.
+    // For furniture, the processItemBBox function already adds items with content_layer === "FURNITURE"
+    // to the furnitureHighlights list. We just need to ensure all relevant docData arrays are iterated
+    // with processItemBBox if they can contain furniture (e.g. if a table can be furniture).
+    // The current furniture check is within processItemBBox, which is called for texts, groups, pictures, tables, formulas, codes.
 
     return {
       tokenHighlights: tokenList,
@@ -509,12 +524,17 @@ const PDFViewerDemoWithDocling: React.FC = () => {
       citationLinks: citationLinkList,
       figureLinks: figureLinkList,
       pictureHighlights: pictureList,
-      bibliography: bibliography, // Added for citation popovers
-      figureCaptions: figureCaptions, // Added for figure popovers
+      bibliography: bibliography,
+      figureCaptions: figureCaptions,
+      tableHighlights,
+      formulaHighlights,
+      codeHighlights,
+      furnitureHighlights,
     };
   }, [extractedTokens]);  // Only depend on extractedTokens, not toggles
 
   // Log overlay data for debugging
+  // Updated console.log to include new highlight types
   console.log('Overlay data computed:', {
     tokens: overlayData.tokenHighlights.length,
     lines: overlayData.lineHighlights.length,
@@ -530,26 +550,30 @@ const PDFViewerDemoWithDocling: React.FC = () => {
     figureCaptionEntries: Object.keys(overlayData.figureCaptions).length,
   });
 
+  const handleToolbarToggle = useCallback((key: string) => {
+    if (key in toggles) {
+      toggleFeature(key as keyof typeof toggles);
+    }
+  }, [toggles, toggleFeature]);
+
+  const handleToggleSelection = useCallback(() => {
+    setSelectionMode((m) => !m);
+  }, []);
+
+  const handleToggleFocusMode = useCallback(() => {
+    setIsFocusMode((fm) => !fm);
+  }, []);
+
   return (
     <ContextProvider> 
       {/* Top toolbar with layer toggles and selection mode */}
       <Toolbar
         toggles={toggles}
-        /*
-         * Toolbar expects `onToggle` to accept a `string`, but our
-         * `toggleFeature` handler is typed more narrowly.  A small
-         * wrapper satisfies Toolbar's contract while preserving
-         * type-safety inside `toggleFeature`.
-         */
-        onToggle={(key) => {
-          if (key in toggles) {
-            toggleFeature(key as keyof typeof toggles);
-          }
-        }}
+        onToggle={handleToolbarToggle}
         selectionMode={selectionMode}
-        onToggleSelection={() => setSelectionMode((m) => !m)}
+        onToggleSelection={handleToggleSelection}
         focusMode={isFocusMode}
-        onToggleFocusMode={() => setIsFocusMode(fm => !fm)}
+        onToggleFocusMode={handleToggleFocusMode}
       />
 
       {/* Debug button to test sidebar - Commented out
@@ -589,17 +613,10 @@ const PDFViewerDemoWithDocling: React.FC = () => {
 
       {/* Main responsive content area with proper layout */}
       <div className="pdf-viewer-content-area with-toolbar" style={{ marginTop: '96px' }}>
-        {/* PDF Document viewer area */}
-        <div className="pdf-viewer-pdf-area" style={{ 
-          width: '100%', 
-          maxWidth: '100%',
-          overflow: 'auto',
-          display: 'flex',
-          justifyContent: 'center',
-          padding: '20px'
-        }}>
+        {/* PDF Document viewer area - styles primarily from globals.css */}
+        <div className="pdf-viewer-pdf-area" style={{ position: 'relative' }}>
           <DocumentWrapper 
-            className="w-full max-w-full"
+            className="w-full max-w-full docling-document-wrapper"
             file={docData.origin?.uri ?? 'https://arxiv.org/pdf/2408.09869v3'} 
             renderType={RENDER_TYPE.MULTI_CANVAS}
           >
@@ -619,11 +636,15 @@ const PDFViewerDemoWithDocling: React.FC = () => {
               citationLinks={overlayData.citationLinks}
               figureLinks={overlayData.figureLinks}
               pictureHighlights={overlayData.pictureHighlights}
-              bibliography={overlayData.bibliography} // Pass bibliography
-              figureCaptions={overlayData.figureCaptions} // Pass figureCaptions
+              bibliography={overlayData.bibliography}
+              figureCaptions={overlayData.figureCaptions}
+              tableHighlights={overlayData.tableHighlights}
+              formulaHighlights={overlayData.formulaHighlights}
+              codeHighlights={overlayData.codeHighlights}
+              furnitureHighlights={overlayData.furnitureHighlights}
               selectionMode={selectionMode}
-              isFocusMode={isFocusMode} // Pass isFocusMode
-              selectedEntity={selectedEntity} // Pass selectedEntity
+              isFocusMode={isFocusMode}
+              selectedEntity={selectedEntity}
               onEntitySelect={handleEntitySelect}
             />
           </DocumentWrapper>

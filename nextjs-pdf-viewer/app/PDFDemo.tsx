@@ -57,8 +57,9 @@ interface FeatureToggles {
   textLayer: boolean;
 }
 
-function TopBar({ toggles, setToggles }: { toggles: FeatureToggles; setToggles: React.Dispatch<React.SetStateAction<FeatureToggles>> }) {
+function TopBar({ toggles, setToggles, scrollTrigger }: { toggles: FeatureToggles; setToggles: React.Dispatch<React.SetStateAction<FeatureToggles>>; scrollTrigger: number }) {
   const { scale } = useContext(TransformContext);
+  // console.log('TopBar re-rendered due to scrollTrigger:', scrollTrigger); // For debugging
   return (
     <div className="flex flex-wrap items-center justify-between w-full bg-gray-900 text-white border-b px-6 py-2 shadow-sm fixed top-12 left-0 z-30 h-16 min-h-[56px]">
       <div className="flex items-center gap-4 flex-wrap">
@@ -207,7 +208,7 @@ function RightSidebar({ toggles, onSkimClick, onCitationClick }: { toggles: Feat
   );
 }
 
-function PDFMainArea({ toggles, scrollToBox }: { toggles: FeatureToggles & any; scrollToBox: any }) {
+function PDFMainArea({ toggles, scrollToBox, onScroll }: { toggles: FeatureToggles & any; scrollToBox: any; onScroll: () => void }) {
   const { numPages } = useContext(DocumentContext);
   const highlightBoxes = [
     { page: 3, top: 100, left: 100, width: 200, height: 30 },
@@ -258,7 +259,10 @@ function PDFMainArea({ toggles, scrollToBox }: { toggles: FeatureToggles & any; 
   }, [scrollToBox]);
 
   return (
-    <div className={`pdf-reader__container flex-1 h-full bg-gray-100 pt-40 overflow-y-auto relative ${toggles.thumbnails ? 'ml-72' : 'ml-0'} ${toggles.rightSidebar ? 'mr-80' : 'mr-0'}`}>
+    <div
+      className={`pdf-reader__container flex-1 h-full bg-gray-100 pt-40 overflow-y-auto relative ${toggles.thumbnails ? 'ml-72' : 'ml-0'} ${toggles.rightSidebar ? 'mr-80' : 'mr-0'}`}
+      onScroll={onScroll}
+    >
       <DocumentWrapper file={PDF_URL} renderType={RENDER_TYPE.SINGLE_CANVAS}>
         <div className="pdf-reader__page-list">
           {Array.from({ length: numPages ?? 0 }).map((_, idx) => (
@@ -429,20 +433,28 @@ export default function PDFDemo() {
   });
   const [activeTab, setActiveTab] = useState('thumbnails');
   const [scrollToBox, setScrollToBox] = useState<any>(null);
+  const [scrollTrigger, setScrollTrigger] = useState(0);
+
+  const handleScrollInMainArea = React.useCallback(() => {
+    // Update state to trigger re-render of TopBar
+    // Using a counter or timestamp to ensure the value changes
+    setScrollTrigger(prev => prev + 1);
+  }, []);
+
   return (
     <ContextProvider>
       <div className="pdf-root fixed inset-0 w-screen h-screen">
         <div className="pdf-background absolute inset-0 bg-gray-900 z-0" />
         <div className="pdf-document-container absolute inset-0 flex flex-col z-10">
-          <PDFMainArea toggles={featureToggles} scrollToBox={scrollToBox} />
+          <PDFMainArea toggles={featureToggles} scrollToBox={scrollToBox} onScroll={handleScrollInMainArea} />
         </div>
         <div className="topbar-overlay fixed top-0 left-0 right-0 z-30">
-          <TopBar toggles={featureToggles} setToggles={setFeatureToggles} />
+          <TopBar toggles={featureToggles} setToggles={setFeatureToggles} scrollTrigger={scrollTrigger} />
         </div>
         <div className="featuresbar-overlay fixed top-0 left-0 right-0 z-30">
           <FeaturesBar toggles={featureToggles} setToggles={setFeatureToggles} />
         </div>
-        {featureToggles.thumbnails && (
+        {(featureToggles.thumbnails || featureToggles.outline) && (
           <div className="sidebar-overlay left fixed top-28 left-0 bottom-0 w-72 z-20">
             <Sidebar toggles={featureToggles} setToggles={setFeatureToggles} activeTab={activeTab} setActiveTab={setActiveTab} />
           </div>
