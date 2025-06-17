@@ -106,6 +106,10 @@ const Pages: React.FC<{
   figureLinks: Array<{ page: number; top: number; left: number; width: number; height: number; figId: string; text: string; isAnchor?: boolean }>;
   pictureHighlights: Array<{ page: number; top: number; left: number; width: number; height: number }>;
   selectionMode: boolean;
+  isFocusMode: boolean; // Added for focus mode
+  selectedEntity: SelectedEntity | null; // Added for focus mode
+  bibliography: { [refId: string]: string }; // Added for citation popovers
+  figureCaptions: { [figId: string]: string }; // Added for figure popovers
   onEntitySelect: (entity: SelectedEntity | null) => void;
 }> = React.memo(({
   toggles,
@@ -120,6 +124,10 @@ const Pages: React.FC<{
   figureLinks,
   pictureHighlights,
   selectionMode,
+  isFocusMode, // Added for focus mode
+  selectedEntity, // Added for focus mode
+  bibliography, // Added for citation popovers
+  figureCaptions, // Added for figure popovers
   onEntitySelect,
 }) => {
   const documentContext = React.useContext(DocumentContext as any) as any;
@@ -144,6 +152,10 @@ const Pages: React.FC<{
             figureLinks={figureLinks}
             imageHighlights={pictureHighlights}
             selectionMode={selectionMode}
+            isFocusMode={isFocusMode} // Pass isFocusMode
+            selectedEntity={selectedEntity} // Pass selectedEntity
+            bibliography={bibliography} // Pass bibliography
+            figureCaptions={figureCaptions} // Pass figureCaptions
             onEntitySelect={onEntitySelect}
             onRegionSelect={onEntitySelect}
           />
@@ -170,6 +182,8 @@ const PDFViewerDemoWithDocling: React.FC = () => {
   });
   // State for selection mode (drag-to-select tool)
   const [selectionMode, setSelectionMode] = useState(false);
+  // State for focus mode
+  const [isFocusMode, setIsFocusMode] = useState(false);
   // State for the currently selected entity to display in the sidebar
   const [selectedEntity, setSelectedEntity] = useState<SelectedEntity | null>(null);
   const [extractedTokens, setExtractedTokens] = useState<Array<{ page: number; top: number; left: number; width: number; height: number; text: string }>>([]);
@@ -184,12 +198,17 @@ const PDFViewerDemoWithDocling: React.FC = () => {
   // Toggle function for overlay feature buttons
   const toggleFeature = useCallback((key: keyof typeof toggles) => {
     console.log('Toggling feature:', key);
-    setToggles(prev => ({ ...prev, [key]: !prev[key] }));
-    // If toggling tokens off, also clear any token selection
-    if (key === 'tokens' && toggles.tokens) {
+    // Determine the new state of the toggle
+    const newToggleState = !toggles[key];
+
+    setToggles(prev => ({ ...prev, [key]: newToggleState }));
+
+    // If tokens layer is being turned OFF, clear any selected entity
+    if (key === 'tokens' && !newToggleState) {
+      console.log('Tokens layer turned off, clearing selected entity.');
       setSelectedEntity(null);
     }
-  }, [toggles.tokens]);
+  }, [toggles]); // Dependency array should include `toggles` to get the latest state
 
   // Callback when an overlay annotation is clicked – capture its data for the inspector
   const handleEntitySelect = useCallback((entity: SelectedEntity | null) => {
@@ -214,9 +233,22 @@ const PDFViewerDemoWithDocling: React.FC = () => {
     const pageWidths = Array.isArray(docData.pages)
       ? docData.pages.map((p: any) => p?.size?.width)
       : [];
-    const DEFAULT_PAGE_HEIGHT = pageHeights[0] ?? 792;
-    const DEFAULT_PAGE_WIDTH = pageWidths[0] ?? 612;
-    const POINT_TO_PIXEL = 96 / 72; // pdf points (1/72 in) to CSS px at 96 DPI
+    const DEFAULT_PAGE_HEIGHT = pageHeights[0] ?? 792; // Default fallback page height (e.g., US Letter portrait)
+    const DEFAULT_PAGE_WIDTH = pageWidths[0] ?? 612;   // Default fallback page width (e.g., US Letter portrait)
+
+    // POINT_TO_PIXEL is used when converting PDF coordinates (often in points) to CSS pixel values.
+    // A standard PDF point is 1/72 of an inch. Web browsers typically render at 96 DPI (dots per inch).
+    // So, to convert points to pixels for web display: value_in_pixels = value_in_points * (96 / 72).
+    // However, in this specific `overlayData` block, most coordinates are being converted
+    // to be *relative* to page dimensions (0-1 range). The actual scaling to screen pixels
+    // is then handled by the `OverlayRenderer` using `styleFromRel` which considers the
+    // current zoom/transform scale from `TransformContext`.
+    // The `POINT_TO_PIXEL` constant is used here primarily in `computeSegmentPosition`
+    // where line bounding boxes (which might be in points from `docData.prov.bbox`) are used
+    // to calculate sub-line segment positions (like for citation links).
+    // If `docData.prov.bbox` coordinates were consistently in a different unit, this might need adjustment,
+    // but typically PDF coordinates are in points.
+    const POINT_TO_PIXEL = 96 / 72;
     
     // Use extracted tokens from PDF.js instead of heuristic generation
     const tokenList: Array<{ page: number; top: number; left: number; width: number; height: number; text: string }> = 
@@ -243,6 +275,8 @@ const PDFViewerDemoWithDocling: React.FC = () => {
     const citationLinkList: Array<{ page: number; top: number; left: number; width: number; height: number; refId: string; text: string; isAnchor?: boolean }> = [];
     const figureLinkList: Array<{ page: number; top: number; left: number; width: number; height: number; figId: string; text: string; isAnchor?: boolean }> = [];
     const pictureList: Array<{ page: number; top: number; left: number; width: number; height: number }> = [];
+    const bibliography: { [refId: string]: string } = {}; // For citation popovers
+    const figureCaptions: { [figId: string]: string } = {}; // For figure popovers
 
     // Helper to compute token horizontal position/width within a line:
     const computeSegmentPosition = (lineText: string, segmentStartIdx: number, segmentEndIdx: number, lineBBox: { l: number; r: number; t: number; b: number }) => {
@@ -271,16 +305,24 @@ const PDFViewerDemoWithDocling: React.FC = () => {
       if (!prov?.[0]?.bbox) return;  // skip if no bounding box
       const bbox = prov[0].bbox;
       const pageIndex = (prov[0].page_no || 1) - 1;  // Docling pages are 1-indexed
-      const { t: pdfTop, b: pdfBottom, l: pdfLeft, r: pdfRight } = bbox;
-      // Use page-specific height when flipping the vertical axis
+      const { t: pdfTop, b: pdfBottom, l: pdfLeft, r: pdfRight } = bbox; // These are PDF coordinates (bottom-left origin)
+
+      // Use page-specific height and width for coordinate conversion.
+      // If not available (e.g. page data missing), use default.
       const pageHeight = pageHeights[pageIndex] ?? DEFAULT_PAGE_HEIGHT;
-      const pdfPageWidth = pageWidths[pageIndex] ?? DEFAULT_PAGE_WIDTH;
-      const elemHeight = pdfTop - pdfBottom;
-      const elemWidth = pdfRight - pdfLeft;
-      // Relative coordinates (origin top-left)
+      const pageWidth = pageWidths[pageIndex] ?? DEFAULT_PAGE_WIDTH;
+
+      const elemHeight = pdfTop - pdfBottom; // Height in PDF units
+      const elemWidth = pdfRight - pdfLeft;   // Width in PDF units
+
+      // Convert to relative coordinates for the overlay (origin top-left).
+      // `topRel`: CSS `top` property, relative to page height.
+      // PDF y-coordinates increase from bottom to top. CSS y-coordinates (top) increase from top to bottom.
+      // So, `pageHeight - pdfTop` converts the PDF top y-coordinate to a CSS-style top offset from the page's top edge.
       const topRel = (pageHeight - pdfTop) / pageHeight;
-      const leftRel = pdfLeft / pdfPageWidth;
-      const widthRel = elemWidth / pdfPageWidth;
+      // `leftRel`: CSS `left` property, relative to page width. PDF x-coordinates (left) are same direction as CSS.
+      const leftRel = pdfLeft / pageWidth;
+      const widthRel = elemWidth / pageWidth;
       const heightRel = elemHeight / pageHeight;
 
       // Identify and record high-level elements by label:
@@ -380,16 +422,20 @@ const PDFViewerDemoWithDocling: React.FC = () => {
               const pageIndex = (refTextItem.prov[0].page_no || 1) - 1;
               const pageHeight = pageHeights[pageIndex] ?? DEFAULT_PAGE_HEIGHT;
               const topPx = (pageHeight - refBBox.t) * POINT_TO_PIXEL;
+              const refId = `ref-${refNum}`;
               citationLinkList.push({
                 page: pageIndex,
                 top: topPx,
                 left: refBBox.l * POINT_TO_PIXEL,
-                width: 1,
-                height: 1,
-                refId: `ref-${refNum}`,
+                width: 1, // Small bbox for anchor
+                height: 1, // Small bbox for anchor
+                refId: refId,
                 text: `[${refNum}]`,
                 isAnchor: true,  // mark as anchor target (not clickable)
               });
+              // Store full reference text
+              const fullRefText = refTextItem.orig.substring(match[0].length).trim();
+              bibliography[refId] = fullRefText;
             }
           }
         });
@@ -411,6 +457,9 @@ const PDFViewerDemoWithDocling: React.FC = () => {
         const match = capText.match(/^Figure\s+(\d+)/);
         if (match) {
           const figNum = match[1];
+          const figId = `fig-${figNum}`;
+          figureCaptions[figId] = capText; // Store full caption text
+
           const picTopRel = (pageHeight - picBBox.t) / pageHeight;
           const picLeftRel = picBBox.l / pdfPageWidth;
           const picWidthRel = (picBBox.r - picBBox.l) / pdfPageWidth;
@@ -421,7 +470,7 @@ const PDFViewerDemoWithDocling: React.FC = () => {
             left: picLeftRel,
             width: picWidthRel,
             height: picHeightRel,
-            figId: `fig-${figNum}`,
+            figId: figId, // Use consistent figId
             text: `Figure ${figNum}`,
             isAnchor: true,
           });
@@ -460,6 +509,8 @@ const PDFViewerDemoWithDocling: React.FC = () => {
       citationLinks: citationLinkList,
       figureLinks: figureLinkList,
       pictureHighlights: pictureList,
+      bibliography: bibliography, // Added for citation popovers
+      figureCaptions: figureCaptions, // Added for figure popovers
     };
   }, [extractedTokens]);  // Only depend on extractedTokens, not toggles
 
@@ -475,6 +526,8 @@ const PDFViewerDemoWithDocling: React.FC = () => {
     citations: overlayData.citationLinks.length,
     figures: overlayData.figureLinks.length,
     pictures: overlayData.pictureHighlights.length,
+    bibliographyEntries: Object.keys(overlayData.bibliography).length,
+    figureCaptionEntries: Object.keys(overlayData.figureCaptions).length,
   });
 
   return (
@@ -495,11 +548,13 @@ const PDFViewerDemoWithDocling: React.FC = () => {
         }}
         selectionMode={selectionMode}
         onToggleSelection={() => setSelectionMode((m) => !m)}
+        focusMode={isFocusMode}
+        onToggleFocusMode={() => setIsFocusMode(fm => !fm)}
       />
 
-      {/* Debug button to test sidebar */}
+      {/* Debug button to test sidebar - Commented out
       <div className="fixed top-20 right-4 z-50">
-        <button 
+        <button
           onClick={() => setSelectedEntity({
             type: 'debug',
             label: 'Debug Test',
@@ -517,6 +572,7 @@ const PDFViewerDemoWithDocling: React.FC = () => {
           Headers: {overlayData.headerHighlights.length}<br/>
         </div>
       </div>
+      */}
 
       {/* Selection mode indicator */}
       <>
@@ -563,7 +619,11 @@ const PDFViewerDemoWithDocling: React.FC = () => {
               citationLinks={overlayData.citationLinks}
               figureLinks={overlayData.figureLinks}
               pictureHighlights={overlayData.pictureHighlights}
+              bibliography={overlayData.bibliography} // Pass bibliography
+              figureCaptions={overlayData.figureCaptions} // Pass figureCaptions
               selectionMode={selectionMode}
+              isFocusMode={isFocusMode} // Pass isFocusMode
+              selectedEntity={selectedEntity} // Pass selectedEntity
               onEntitySelect={handleEntitySelect}
             />
           </DocumentWrapper>
